@@ -25,7 +25,9 @@ int io_init() {
 
 int io_write(int addr, char *buf) {
   lseek(fd, addr, SEEK_SET);
-  return write(fd, buf, MFS_BLOCK_SIZE);
+  int ret = write(fd, buf, MFS_BLOCK_SIZE);
+  fsync(fd);
+  return fd;
 }
 
 int io_read(int addr, char *buf) {
