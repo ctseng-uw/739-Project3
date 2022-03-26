@@ -82,11 +82,22 @@ static int do_open(const char *path, struct fuse_file_info *fi) {
 static int do_read(const char *path, char *buffer, size_t size, off_t offset,
                    struct fuse_file_info *fi) {
   printf("[read] %s %lu\n", path, size);
+  // TODO: Remove this
   assert(offset % MFS_BLOCK_SIZE == 0);
   char bkbuf[MFS_BLOCK_SIZE] = {};
   int inum = translate(path);
   int cur = offset / MFS_BLOCK_SIZE;
   int cursz = 0;
+  if (offset % MFS_BLOCK_SIZE != 0) {
+    int ret = MFS_Read(inum, bkbuf, cur);
+    CHK(ret);
+    int off_in_block = offset % MFS_BLOCK_SIZE;
+    memcpy(buffer, bkbuf + off_in_block,
+           MIN(size, MFS_BLOCK_SIZE - off_in_block));
+    cursz += ret;
+    cur++;
+  }
+
   while (cursz < size) {
     int ret = MFS_Read(inum, bkbuf, cur);
     CHK(ret);
@@ -102,16 +113,30 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset,
 static int do_write(const char *path, const char *buffer, size_t size,
                     off_t offset, struct fuse_file_info *fi) {
   printf("[write] %s %d %d\n", path, size, offset);
-  assert(offset % MFS_BLOCK_SIZE == 0);
   int inum = translate(path);
   int cur = offset / MFS_BLOCK_SIZE;
   int remain = size;
+
+  if (offset % MFS_BLOCK_SIZE != 0) {
+    char bkbuf[MFS_BLOCK_SIZE] = {};
+    int ret = MFS_Read(inum, bkbuf, cur);
+    CHK(ret);
+    int off_in_block = offset % MFS_BLOCK_SIZE;
+    int remain_in_block = MIN(MFS_BLOCK_SIZE - off_in_block, size);
+    memcpy(bkbuf + off_in_block, buffer, remain_in_block);
+    ret = MFS_Write(inum, bkbuf, cur, off_in_block + remain_in_block);
+    buffer += remain_in_block;
+    remain -= remain_in_block;
+    cur += 1;
+  }
+
   while (remain > 0) {
     int write_sz = MIN(remain, MFS_BLOCK_SIZE);
     int ret = MFS_Write(inum, buffer, cur, write_sz);
+    CHK(ret);
     buffer += write_sz;
     remain -= write_sz;
-    CHK(ret);
+    cur += 1;
   }
   return size;
 }
