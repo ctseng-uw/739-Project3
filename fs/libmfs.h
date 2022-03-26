@@ -6,7 +6,7 @@
 
 #define MFS_BLOCK_SIZE (4096)
 #define MFS_MAX_NAME (28)
-#define MFS_MAX_DPTR (14)
+#define MFS_MAX_DPTR (1022)
 
 typedef struct __MFS_Stat_t {
   int type; // MFS_DIRECTORY or MFS_REGULAR
@@ -23,7 +23,7 @@ typedef struct __MFS_DirEnt_t {
 int MFS_Init();
 int MFS_Lookup(int pinum, char *name);
 int MFS_Stat(int inum, MFS_Stat_t *m);
-int MFS_Write(int inum, char *buffer, int block, int size);
+int MFS_Write(int inum, const char *buffer, int block, int size);
 int MFS_Read(int inum, char *buffer, int block);
 int MFS_Creat(int pinum, int type, char *name);
 int MFS_Unlink(int pinum, char *name);

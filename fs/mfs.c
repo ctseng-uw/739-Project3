@@ -82,8 +82,9 @@ static int do_open(const char *path, struct fuse_file_info *fi) {
 static int do_read(const char *path, char *buffer, size_t size, off_t offset,
                    struct fuse_file_info *fi) {
   printf("[read] %s %lu\n", path, size);
-  // TODO: Remove this
-  assert(offset % MFS_BLOCK_SIZE == 0);
+  if (offset % MFS_BLOCK_SIZE != 0) {
+    printf("===== READ WITH OFFSET =====\n");
+  }
   char bkbuf[MFS_BLOCK_SIZE] = {};
   int inum = translate(path);
   int cur = offset / MFS_BLOCK_SIZE;

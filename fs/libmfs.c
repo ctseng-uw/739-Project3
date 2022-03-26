@@ -9,25 +9,34 @@
 #include <string.h>
 #include <unistd.h>
 
-#define WRITE(fd, buf, len)                                                    \
-  if (write(fd, buf, len) != len) {                                            \
+#include "io.h"
+
+int tmp_ret;
+#define WRITE(addr, buf)                                                       \
+  tmp_ret = io_write(addr, (char *)buf);                                       \
+  if (tmp_ret == -1) {                                                         \
     perror("write");                                                           \
+    assert(0);                                                                 \
+  } else if (tmp_ret != MFS_BLOCK_SIZE) {                                      \
+    printf("write ret: %d\n", tmp_ret);                                        \
     assert(0);                                                                 \
   }
 
-#define WRITEEND(fd, buf, len)                                                 \
-  lseek(fd, 0, SEEK_END);                                                      \
-  WRITE(fd, buf, len)                                                          \
-  cp->end += len;
+#define WRITEEND(buf)                                                          \
+  WRITE(cp->end, buf)                                                          \
+  cp->end += MFS_BLOCK_SIZE;
 
-#define READ(fd, buf, len)                                                     \
-  if (read(fd, buf, len) != len) {                                             \
+#define READ(addr, buf)                                                        \
+  tmp_ret = io_read(addr, (char *)buf);                                        \
+  if (tmp_ret == -1) {                                                         \
     perror("read");                                                            \
+    assert(0);                                                                 \
+  } else if (tmp_ret != MFS_BLOCK_SIZE) {                                      \
+    printf("read ret: %d\n", tmp_ret);                                         \
     assert(0);                                                                 \
   }
 
 #define MAX_INODE (4096)
-
 #define INODE_IN_PIECE (16)
 #define MAX_PIECE (MAX_INODE / INODE_IN_PIECE)
 
@@ -36,10 +45,12 @@ char ZBLOCK[MFS_BLOCK_SIZE] = {0};
 typedef struct {
   int end;
   int inode_map_ptrs[MAX_PIECE];
+  char padding[3068];
 } Checkpoint_t;
 
 typedef struct {
   int inode_ptrs[INODE_IN_PIECE];
+  char padding[4096 - 64];
 } Inodemap_t;
 
 typedef struct Inode_t {
@@ -54,18 +65,17 @@ typedef struct {
 } Dblock_t;
 
 Checkpoint_t *cp;
-int fd;
 
 void initfs() {
   memset(cp, -1, sizeof(Checkpoint_t));
   cp->inode_map_ptrs[0] = sizeof(Checkpoint_t);
   int root_off = cp->inode_map_ptrs[0] + sizeof(Inodemap_t);
   cp->end = root_off + sizeof(Inode_t) + sizeof(Dblock_t);
-  WRITE(fd, cp, sizeof(Checkpoint_t));
+  WRITE(0, cp);
   Inodemap_t *im = malloc(sizeof(Inodemap_t));
   memset(im->inode_ptrs, -1, sizeof(im->inode_ptrs));
   im->inode_ptrs[0] = root_off;
-  WRITE(fd, im, sizeof(Inodemap_t));
+  WRITE(MFS_BLOCK_SIZE, im);
   free(im);
 
   Inode_t *root = malloc(sizeof(Inode_t));
@@ -73,7 +83,7 @@ void initfs() {
   root->type = MFS_DIRECTORY;
   root->size = 2;
   root->dptrs[0] = root_off + sizeof(Inode_t);
-  WRITE(fd, root, sizeof(Inode_t));
+  WRITE(MFS_BLOCK_SIZE * 2, root);
   free(root);
 
   Dblock_t dblock;
@@ -84,30 +94,23 @@ void initfs() {
   dblock.dent[1].inum = 0;
   strcpy(dblock.dent[1].name, "..");
 
-  WRITE(fd, &dblock, sizeof(Dblock_t));
-  fsync(fd);
+  WRITE(MFS_BLOCK_SIZE * 3, &dblock);
 }
 
-void syncfs() {
-  lseek(fd, 0, SEEK_SET);
-  WRITE(fd, cp, sizeof(Checkpoint_t));
-  fsync(fd);
-}
+void syncfs() { WRITE(0, cp); }
 
 Inode_t *finode(int inum) {
   if (inum < 0 && inum >= MAX_INODE)
     return NULL;
   int off = cp->inode_map_ptrs[inum / INODE_IN_PIECE];
-  lseek(fd, off, SEEK_SET);
   Inodemap_t im;
-  READ(fd, &im, sizeof(Inodemap_t));
+  READ(off, &im);
   int idx = inum % INODE_IN_PIECE;
   int off2 = im.inode_ptrs[idx];
   if (off2 == -1)
     return NULL;
-  lseek(fd, off2, SEEK_SET);
   Inode_t *inode = malloc(sizeof(Inode_t));
-  READ(fd, inode, sizeof(Inode_t));
+  READ(off2, inode);
   return inode;
 }
 
@@ -115,8 +118,7 @@ void commit_inode(int inum, Inode_t *inode) {
   int off = cp->inode_map_ptrs[inum / INODE_IN_PIECE];
   Inodemap_t im;
   if (off != -1) {
-    lseek(fd, off, SEEK_SET);
-    READ(fd, &im, sizeof(Inodemap_t));
+    READ(off, &im);
   } else {
     memset(&im, -1, sizeof(Inodemap_t));
   }
@@ -124,13 +126,13 @@ void commit_inode(int inum, Inode_t *inode) {
   int idx = inum % INODE_IN_PIECE;
   if (inode) {
     im.inode_ptrs[idx] = cp->end;
-    WRITEEND(fd, inode, sizeof(Inode_t));
+    WRITEEND(inode);
   } else {
     im.inode_ptrs[idx] = -1;
   }
 
   cp->inode_map_ptrs[inum / INODE_IN_PIECE] = cp->end;
-  WRITEEND(fd, &im, sizeof(Inodemap_t));
+  WRITEEND(&im);
 }
 
 int findfree() {
@@ -138,9 +140,8 @@ int findfree() {
     int off = cp->inode_map_ptrs[i];
     if (off == -1)
       return i * INODE_IN_PIECE;
-    lseek(fd, off, SEEK_SET);
     Inodemap_t im;
-    READ(fd, &im, sizeof(Inodemap_t));
+    READ(off, &im);
     for (int j = 0; j < INODE_IN_PIECE; j++) {
       if (im.inode_ptrs[j] == -1) {
         return i * INODE_IN_PIECE + j;
@@ -158,8 +159,7 @@ int MFS_Lookup(int pinum, char *name) {
   }
   Dblock_t db;
   for (int i = 0; inode->dptrs[i] != -1; i++) {
-    lseek(fd, inode->dptrs[i], SEEK_SET);
-    READ(fd, &db, sizeof(Dblock_t));
+    READ(inode->dptrs[i], &db);
     for (int j = 0; j < MAX_FILE_IN_DBLOCK; j++) {
       if (strcmp(name, db.dent[j].name) == 0) {
         free(inode);
@@ -195,8 +195,7 @@ int MFS_Creat(int pinum, int type, char *name) {
     if (pinode->dptrs[i] == -1)
       continue;
     Dblock_t tmpdb;
-    lseek(fd, pinode->dptrs[i], SEEK_SET);
-    READ(fd, &tmpdb, sizeof(Dblock_t));
+    READ(pinode->dptrs[i], &tmpdb);
     for (int j = 0; j < MAX_FILE_IN_DBLOCK; j++) {
       if (tmpdb.dent[j].inum == -1)
         continue;
@@ -224,7 +223,7 @@ int MFS_Creat(int pinum, int type, char *name) {
 
     tmpdb.dent[1].inum = pinum;
     strcpy(tmpdb.dent[1].name, "..");
-    WRITEEND(fd, &tmpdb, sizeof(Dblock_t));
+    WRITEEND(&tmpdb);
   }
   commit_inode(free_inum, cinode);
   free(cinode);
@@ -238,8 +237,7 @@ int MFS_Creat(int pinum, int type, char *name) {
       eidx = 0;
       break;
     } else {
-      lseek(fd, pinode->dptrs[i], SEEK_SET);
-      READ(fd, &db, sizeof(Dblock_t));
+      READ(pinode->dptrs[i], &db);
       for (int j = 0; j < MAX_FILE_IN_DBLOCK; j++) {
         if (db.dent[j].inum == -1) {
           eidx = j;
@@ -260,7 +258,7 @@ int MFS_Creat(int pinum, int type, char *name) {
   pinode->size += 1;
   db.dent[eidx].inum = free_inum;
   strncpy(db.dent[eidx].name, name, MFS_MAX_NAME);
-  WRITEEND(fd, &db, sizeof(Dblock_t));
+  WRITEEND(&db);
 
   commit_inode(pinum, pinode);
 
@@ -269,7 +267,7 @@ int MFS_Creat(int pinum, int type, char *name) {
   return 0;
 }
 
-int MFS_Write(int inum, char *buffer, int block, int size) {
+int MFS_Write(int inum, const char *buffer, int block, int size) {
   if (block < 0 || block >= MFS_MAX_DPTR)
     return -1;
   Inode_t *inode = finode(inum);
@@ -279,11 +277,11 @@ int MFS_Write(int inum, char *buffer, int block, int size) {
     if (inode->dptrs[i] != -1)
       continue;
     inode->dptrs[i] = cp->end;
-    WRITEEND(fd, &ZBLOCK, MFS_BLOCK_SIZE);
+    WRITEEND(ZBLOCK);
   }
   inode->size = MFS_BLOCK_SIZE * block + size;
   inode->dptrs[block] = cp->end;
-  WRITEEND(fd, buffer, MFS_BLOCK_SIZE);
+  WRITEEND(buffer);
   commit_inode(inum, inode);
   free(inode);
   syncfs();
@@ -298,8 +296,7 @@ int MFS_Read(int inum, char *buffer, int block) {
     return -1;
   if (inode->dptrs[block] == -1)
     return 0;
-  lseek(fd, inode->dptrs[block], SEEK_SET);
-  READ(fd, buffer, MFS_BLOCK_SIZE);
+  READ(inode->dptrs[block], buffer);
   int size = MFS_BLOCK_SIZE;
   if ((block + 1) * MFS_BLOCK_SIZE > inode->size) {
     size = inode->size % MFS_BLOCK_SIZE;
@@ -319,8 +316,7 @@ int MFS_Unlink(int pinum, char *name) {
   for (int i = 0; i < MFS_MAX_DPTR; i++) {
     if (inode->dptrs[i] == -1)
       continue;
-    lseek(fd, inode->dptrs[i], SEEK_SET);
-    READ(fd, &db, sizeof(Dblock_t));
+    READ(inode->dptrs[i], &db);
     for (int j = 0; j < MAX_FILE_IN_DBLOCK; j++) {
       if (db.dent[j].inum == -1)
         continue;
@@ -336,7 +332,7 @@ int MFS_Unlink(int pinum, char *name) {
         inode->size -= 1;
         inode->dptrs[i] = cp->end;
         memset(&db.dent[j], -1, sizeof(MFS_DirEnt_t));
-        WRITEEND(fd, &db, sizeof(Dblock_t));
+        WRITEEND(&db);
         commit_inode(pinum, inode);
         break;
       }
@@ -360,29 +356,14 @@ int MFS_Shutdown() {
 }
 
 int MFS_Init() {
-  char *img = "./fs.img";
+  assert(sizeof(Checkpoint_t) == MFS_BLOCK_SIZE);
+  assert(sizeof(Inodemap_t) == MFS_BLOCK_SIZE);
+  assert(sizeof(Inode_t) == MFS_BLOCK_SIZE);
+  assert(sizeof(Dblock_t) == MFS_BLOCK_SIZE);
   cp = malloc(sizeof(Checkpoint_t));
-  if ((fd = open(img, O_CREAT | O_RDWR | O_EXCL, 0644)) >= 0) {
+  if (io_init() != EEXIST) {
     initfs();
-  } else if (errno == EEXIST) {
-    fd = open(img, O_RDWR);
-    READ(fd, cp, sizeof(Checkpoint_t));
-  } else {
-    perror("open");
-    assert(0);
   }
+  READ(0, cp);
   return 0;
 }
-
-// int main() {
-//     MFS_Init();
-//     printf("%d\n", MFS_Lookup(0, "test"));
-//     MFS_Stat_t m;
-//     printf("%d\n", MFS_Stat(1, &m));
-
-//     // printf("sizeof Checkpoint_t %d\n", sizeof(Checkpoint_t));
-//     // printf("sizeof Inodemap_t %d\n", sizeof(Inodemap_t));
-//     // printf("sizeof Inode_t %d\n", sizeof(Inode_t));
-//     // printf("sizeof MFS_DirEnt_t %d\n", sizeof(MFS_DirEnt_t));
-//     // printf("sizeof Dblock_t %d\n", sizeof(Dblock_t));
-// }
