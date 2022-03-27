@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package hafs;
+package hadev;
 
 message WriteRequest {
   int64 addr = 1;

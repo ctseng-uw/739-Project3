@@ -139,3 +139,4 @@ server
 includes/**.pb.**
 compile_commands.json
 server_device.bin
+*.a
