@@ -23,8 +23,8 @@ add_custom_command(
 add_executable(server server.cpp includes/hello.pb.cc includes/hello.grpc.pb.cc)
 target_link_libraries(server grpc++)
 
-add_library(hadev STATIC hadev.hpp includes/hello.pb.cc includes/hello.grpc.pb.cc)
+add_library(hadev STATIC hadev.cpp hadev.hpp includes/hello.pb.cc includes/hello.grpc.pb.cc)
 target_link_libraries(hadev grpc++)
 
-add_executable(client client.cpp)
+add_executable(client client.cpp hadev.hpp)
 target_link_libraries(client hadev grpc++)
