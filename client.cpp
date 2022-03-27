@@ -1,4 +1,4 @@
-
+#include <cstdint>
 #include <fcntl.h>
 #include <grpcpp/client_context.h>
 #include <grpcpp/grpcpp.h>
@@ -19,17 +19,28 @@ public:
   GRPCClient(std::shared_ptr<grpc::Channel> channel)
       : stub_(hafs::gRPCService::NewStub(channel)) {}
 
-  std::string hi(const std::string &s) {
-    hafs::ClientRequest request;
-    request.set_str("World");
+  int Write(int64_t addr, std::string &data) {
+    hafs::WriteRequest request;
+    request.set_data(data);
     ClientContext context;
-    hafs::ServerResponse reply;
-    auto status = stub_->hi(&context, request, &reply);
-    if (status.ok()) {
-      return reply.str();
-    } else {
-      return "Failed";
+    hafs::WriteReply reply;
+    auto status = stub_->Write(&context, request, &reply);
+    if (!status.ok()) {
+      return -1;
     }
+    return 0;
+  }
+
+  std::string Read(int64_t addr) {
+    hafs::ReadRequest request;
+    request.set_addr(addr);
+    ClientContext context;
+    hafs::ReadReply reply;
+    auto status = stub_->Read(&context, request, &reply);
+    if (!status.ok()) {
+      return nullptr;
+    }
+    return reply.data();
   }
 
 private:
@@ -46,7 +57,9 @@ int main(int argc, char *argv[]) {
   GRPCClient gRPCClient(grpc::CreateCustomChannel(
       target_str, grpc::InsecureChannelCredentials(), ch_args));
 
-  std::cout << gRPCClient.hi("world") << std::endl;
+  std::string apple{"apple"};
+  std::cout << gRPCClient.Write(0, apple) << std::endl;
+  std::cout << gRPCClient.Read(0) << std::endl;
 
   return 0;
 }

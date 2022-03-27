@@ -2,14 +2,26 @@ syntax = "proto3";
 
 package hafs;
 
-message ClientRequest {
-	string str = 1;
+message WriteRequest {
+  int64 addr = 1;
+  bytes data = 2;
 }
 
-message ServerResponse {
-  string str = 1;
+message WriteReply {
+  int32 ret = 1;
 }
+
+message ReadRequest {
+  int64 addr = 1;
+}
+
+message ReadReply {
+  int32 ret = 1;
+  bytes data = 2;
+}
+
 
 service gRPCService {
-  rpc hi (ClientRequest) returns (ServerResponse) {}
+  rpc Write (WriteRequest) returns (WriteReply) {}
+  rpc Read (ReadRequest) returns (ReadReply) {}
 }

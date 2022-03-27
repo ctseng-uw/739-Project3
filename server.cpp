@@ -1,23 +1,49 @@
 #include "includes/hello.grpc.pb.h"
+#include "includes/hello.pb.h"
 
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
+#include <grpcpp/server_context.h>
+#include <grpcpp/support/status.h>
 #include <signal.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
 
+constexpr unsigned long BLOCK_SIZE = 4096;
+
 class gRPCServiceImpl final : public hafs::gRPCService::Service {
-  Status hi(ServerContext *context, const hafs::ClientRequest *req,
-            hafs::ServerResponse *reply) {
-    std::string result = "Hello " + req->str();
-    reply->set_str(result);
+public:
+  gRPCServiceImpl() { fd = open("server_device.bin", O_CREAT | O_RDWR, 0644); };
+
+private:
+  int fd;
+
+  Status Write(ServerContext *context, const hafs::WriteRequest *req,
+               hafs::WriteReply *reply) {
+    lseek(fd, req->addr(), SEEK_SET);
+    errno = 0;
+    write(fd, req->data().c_str(), std::min(BLOCK_SIZE, req->data().length()));
+    perror("write");
+    fsync(fd);
+    reply->set_ret(0);
+    return Status::OK;
+  }
+
+  Status Read(ServerContext *context, const hafs::ReadRequest *req,
+              hafs::ReadReply *reply) {
+    lseek(fd, req->addr(), SEEK_SET);
+    char buf[BLOCK_SIZE];
+    read(fd, buf, BLOCK_SIZE);
+    reply->set_data(buf);
+    reply->set_ret(0);
     return Status::OK;
   }
 };
