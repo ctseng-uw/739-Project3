@@ -12,17 +12,18 @@
 #include <memory>
 #include <string>
 
-#include "includes/hello.grpc.pb.h"
-#include "includes/hello.pb.h"
+#include "build/protoh/hello.grpc.pb.h"
+#include "build/protoh/hello.pb.h"
 
 using grpc::ClientContext;
 class HadevClient::GRPCClient {
- public:
+public:
   GRPCClient(std::shared_ptr<grpc::Channel> channel)
       : stub_(hadev::gRPCService::NewStub(channel)) {}
 
   int Write(const int64_t addr, const std::string &data) {
     hadev::WriteRequest request;
+    request.set_addr(addr);
     request.set_data(data);
     ClientContext context;
     hadev::WriteReply reply;
@@ -45,7 +46,7 @@ class HadevClient::GRPCClient {
     return reply.data();
   }
 
- private:
+private:
   std::unique_ptr<hadev::gRPCService::Stub> stub_;
 };
 
@@ -60,7 +61,7 @@ HadevClient::HadevClient() {
       target_str, grpc::InsecureChannelCredentials(), ch_args)));
 }
 
-HadevClient::~HadevClient() = default;
+HadevClient::~HadevClient() { gRPCClient.release(); };
 
 int HadevClient::Write(const int64_t addr, const std::string &data) {
   return gRPCClient->Write(addr, data);

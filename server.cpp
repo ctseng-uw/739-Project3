@@ -8,8 +8,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "includes/hello.grpc.pb.h"
-#include "includes/hello.pb.h"
+#include "build/protoh/hello.grpc.pb.h"
+#include "build/protoh/hello.pb.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -19,16 +19,19 @@ using grpc::Status;
 constexpr unsigned long BLOCK_SIZE = 4096;
 
 class gRPCServiceImpl final : public hadev::gRPCService::Service {
-public:
+ public:
   gRPCServiceImpl() { fd = open("server_device.bin", O_CREAT | O_RDWR, 0644); };
 
-private:
+ private:
   int fd;
+  std::array<char, 256> junk;
 
   Status Write(ServerContext *context, const hadev::WriteRequest *req,
                hadev::WriteReply *reply) {
     lseek(fd, req->addr(), SEEK_SET);
-    write(fd, req->data().c_str(), std::min(BLOCK_SIZE, req->data().length()));
+    int write_size = std::min(BLOCK_SIZE, req->data().length());
+    write(fd, req->data().c_str(), write_size);
+    write(fd, junk.data(), BLOCK_SIZE - write_size);
     fsync(fd);
     reply->set_ret(0);
     return Status::OK;
@@ -39,7 +42,7 @@ private:
     lseek(fd, req->addr(), SEEK_SET);
     char buf[BLOCK_SIZE];
     read(fd, buf, BLOCK_SIZE);
-    reply->set_data(buf);
+    reply->set_data(std::string(buf, 4096));
     reply->set_ret(0);
     return Status::OK;
   }

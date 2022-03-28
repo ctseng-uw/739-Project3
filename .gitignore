@@ -136,7 +136,8 @@ CPackSourceConfig.cmake
 gens/
 client
 server
-includes/**.pb.**
+build/protoh
 compile_commands.json
 server_device.bin
 *.a
+mfsfuse

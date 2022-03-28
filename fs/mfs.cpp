@@ -1,4 +1,4 @@
-#include "libmfs.h"
+#include "mfs.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -72,13 +72,13 @@ void initfs() {
   int root_off = cp->inode_map_ptrs[0] + sizeof(Inodemap_t);
   cp->end = root_off + sizeof(Inode_t) + sizeof(Dblock_t);
   WRITE(0, cp);
-  Inodemap_t *im = malloc(sizeof(Inodemap_t));
+  Inodemap_t *im = (Inodemap_t *)malloc(sizeof(Inodemap_t));
   memset(im->inode_ptrs, -1, sizeof(im->inode_ptrs));
   im->inode_ptrs[0] = root_off;
   WRITE(MFS_BLOCK_SIZE, im);
   free(im);
 
-  Inode_t *root = malloc(sizeof(Inode_t));
+  Inode_t *root = (Inode_t *)malloc(sizeof(Inode_t));
   memset(root, -1, sizeof(Inode_t));
   root->type = MFS_DIRECTORY;
   root->size = 2;
@@ -109,7 +109,7 @@ Inode_t *finode(int inum) {
   int off2 = im.inode_ptrs[idx];
   if (off2 == -1)
     return NULL;
-  Inode_t *inode = malloc(sizeof(Inode_t));
+  Inode_t *inode = (Inode_t *)malloc(sizeof(Inode_t));
   READ(off2, inode);
   return inode;
 }
@@ -209,7 +209,7 @@ int MFS_Creat(int pinum, int type, char *name) {
   int free_inum = findfree();
   assert(free_inum != -1);
 
-  Inode_t *cinode = malloc(sizeof(Inode_t));
+  Inode_t *cinode = (Inode_t *)malloc(sizeof(Inode_t));
   memset(cinode, -1, sizeof(Inode_t));
   cinode->type = type;
   cinode->size = 0;
@@ -360,7 +360,7 @@ int MFS_Init() {
   assert(sizeof(Inodemap_t) == MFS_BLOCK_SIZE);
   assert(sizeof(Inode_t) == MFS_BLOCK_SIZE);
   assert(sizeof(Dblock_t) == MFS_BLOCK_SIZE);
-  cp = malloc(sizeof(Checkpoint_t));
+  cp = (Checkpoint_t *)malloc(sizeof(Checkpoint_t));
   if (io_init() != EEXIST) {
     initfs();
   }

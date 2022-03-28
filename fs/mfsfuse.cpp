@@ -1,4 +1,3 @@
-#include <asm-generic/errno-base.h>
 #define FUSE_USE_VERSION 35
 #include <assert.h>
 #include <errno.h>
@@ -13,7 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "libmfs.h"
+#include "mfs.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -180,19 +179,21 @@ static int do_unlink(const char *path) {
 
 void *do_init(struct fuse_conn_info *conn) {
   MFS_Init();
+  printf("[init] done\n");
   return 0;
 }
 
-static struct fuse_operations operations = {.create = do_create,
-                                            .init = do_init,
-                                            .getattr = do_getattr,
-                                            .readdir = do_readdir,
-                                            .read = do_read,
-                                            .mkdir = do_mkdir,
-                                            .unlink = do_unlink,
-                                            .write = do_write,
-                                            .open = do_open};
+static struct fuse_operations operations;
 
 int main(int argc, char *argv[]) {
+  operations.create = do_create;
+  operations.init = do_init;
+  operations.getattr = do_getattr;
+  operations.readdir = do_readdir;
+  operations.read = do_read;
+  operations.mkdir = do_mkdir;
+  operations.unlink = do_unlink;
+  operations.write = do_write;
+  operations.open = do_open;
   return fuse_main(argc, argv, &operations, NULL);
 }
