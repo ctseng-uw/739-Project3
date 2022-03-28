@@ -23,7 +23,7 @@ add_custom_command(
 )
 
 
-add_executable(server server.cpp protoh/hello.pb.cc protoh/hello.grpc.pb.cc protoh/heartbeat.pb.cc protoh/heartbeat.grpc.pb.cc)
+add_executable(server server.cpp heartbeat.cpp heartbeat.h protoh/hello.pb.cc protoh/hello.grpc.pb.cc protoh/heartbeat.pb.cc protoh/heartbeat.grpc.pb.cc)
 target_link_libraries(server grpc++)
 
 add_library(hadev STATIC hadev.cpp hadev.hpp protoh/hello.pb.cc protoh/hello.grpc.pb.cc)

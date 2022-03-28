@@ -5,8 +5,8 @@
 #include <grpcpp/grpcpp.h>
 #include <signal.h>
 
-#include "includes/heartbeat.grpc.pb.h"
-#include "includes/heartbeat.pb.h"
+#include "build/protoh/heartbeat.grpc.pb.h"
+#include "build/protoh/heartbeat.pb.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
