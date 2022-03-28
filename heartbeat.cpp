@@ -13,8 +13,10 @@ grpc::Status HeartbeatServiceImpl::RepliWrite(grpc::ServerContext *context,
                                               const hadev::Request *req,
                                               hadev::Reply *reply) {
   if (req->has_data() && req->has_addr()) {
+    assert(req->data().length() == 4096);
     lseek(fd, req->addr(), SEEK_SET);
     write(fd, req->data().c_str(), 4096);
+    fsync(fd);
   }
 
   reply->set_yeah(true);

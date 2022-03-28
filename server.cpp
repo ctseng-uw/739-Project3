@@ -47,29 +47,31 @@ int main(int argc, char **argv) {
   int my_node_number = atoi(argv[1]);
   auto i_am_primary = std::make_shared<bool>(atoi(argv[2]));
 
-  BlockStoreServiceImpl blockstoreService;
-  auto blockstoreServer =
-      create_server("0.0.0.0:" + BLOCKSTOREPORT, &blockstoreService);
-
-  HeartbeatServiceImpl heartbeatService(i_am_primary);
-  auto heartbeatServer =
-      create_server("0.0.0.0:" + HEARTTBEATPORT, &heartbeatService);
-
   grpc::ChannelArguments ch_args;
   ch_args.SetMaxReceiveMessageSize(INT_MAX);
   ch_args.SetMaxSendMessageSize(INT_MAX);
 
-  HeartbeatClient heartbeatClient(grpc::CreateCustomChannel(
-      LAN_ADDR[1 - my_node_number] + ":" + HEARTTBEATPORT,
-      grpc::InsecureChannelCredentials(), ch_args));
+  auto heartbeat_client =
+      std::make_shared<HeartbeatClient>(grpc::CreateCustomChannel(
+          LAN_ADDR[1 - my_node_number] + ":" + HEARTTBEATPORT,
+          grpc::InsecureChannelCredentials(), ch_args));
+
+  BlockStoreServiceImpl blockstore_service(heartbeat_client);
+  auto blockstore_server =
+      create_server("0.0.0.0:" + BLOCKSTOREPORT, &blockstore_service);
+
+  HeartbeatServiceImpl heartbeat_service(i_am_primary);
+  auto heartbeat_server =
+      create_server("0.0.0.0:" + HEARTTBEATPORT, &heartbeat_service);
+
   while (true) {
     // TODO: conditional var?
     while (i_am_primary) {
       try {
-        heartbeatClient.BeatHeart();
+        heartbeat_client->BeatHeart();
         std::cout << "beat" << ' ' << std::flush;
         usleep(TIMEOUTMS * 300);
-      } catch (const std::exception &e) {  // TODO: might not able to be catched
+      } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';
       }
     }

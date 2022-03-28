@@ -29,9 +29,11 @@ class HadevClient {
   }
 
   int Write(const int64_t addr, const std::string &data) {
+    std::string copy(data, 0, 4096);
+    copy.resize(4096);
     hadev::WriteRequest request;
     request.set_addr(addr);
-    request.set_data(data);
+    request.set_data(copy);
     ClientContext context;
     hadev::WriteReply reply;
     auto status = stub_->Write(&context, request, &reply);

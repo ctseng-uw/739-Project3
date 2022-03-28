@@ -1,3 +1,4 @@
+#pragma once
 #include <fcntl.h>
 #include <grpcpp/client_context.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>

@@ -3,6 +3,7 @@
 
 #include "build/protoh/blockstore.grpc.pb.h"
 #include "build/protoh/blockstore.pb.h"
+#include "heartbeat.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -13,7 +14,8 @@ constexpr unsigned long BLOCK_SIZE = 4096;
 
 class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
  public:
-  BlockStoreServiceImpl() {
+  BlockStoreServiceImpl(std::shared_ptr<HeartbeatClient> heartbeat_client)
+      : heartbeat_client(heartbeat_client) {
     fd = open("server_device.bin", O_CREAT | O_RDWR, 0644);
     assert(fd >= 0);
   };
@@ -21,13 +23,14 @@ class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
  private:
   int fd;
   std::array<char, 256> junk;
+  std::shared_ptr<HeartbeatClient> heartbeat_client;
 
   Status Write(ServerContext *context, const hadev::WriteRequest *req,
                hadev::WriteReply *reply) {
+    assert(req->data().length() == BLOCK_SIZE);
     lseek(fd, req->addr(), SEEK_SET);
-    int write_size = std::min(BLOCK_SIZE, req->data().length());
-    write(fd, req->data().c_str(), write_size);
-    write(fd, junk.data(), BLOCK_SIZE - write_size);
+    write(fd, req->data().c_str(), BLOCK_SIZE);
+    heartbeat_client->Write(req->addr(), req->data());
     fsync(fd);
     reply->set_ret(0);
     return Status::OK;
