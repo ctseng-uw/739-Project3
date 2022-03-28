@@ -32,12 +32,8 @@ grpc::Status HeartbeatServiceImpl::is_primary(grpc::ServerContext *context,
 
 /* ----------------- Heartbeat Client Exception ----------------- */
 RPCFailException::RPCFailException(grpc::Status status)
-    : std::runtime_error(([&status]() {
-        std::stringstream ss;
-        ss << "gRPC status " << status.error_code() << ": "
-           << status.error_message();
-        return ss.str();
-      })()) {}
+    : std::runtime_error("gRPC status " + std::to_string(status.error_code()) +
+                         ": " + status.error_message()) {}
 
 /* ----------------- Heartbeat Client  ----------------- */
 HeartbeatClient::HeartbeatClient(std::shared_ptr<grpc::Channel> channel)
