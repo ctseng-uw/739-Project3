@@ -22,7 +22,6 @@ class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
 
  private:
   int fd;
-  std::array<char, 256> junk;
   std::shared_ptr<HeartbeatClient> heartbeat_client;
 
   Status Write(ServerContext *context, const hadev::WriteRequest *req,
