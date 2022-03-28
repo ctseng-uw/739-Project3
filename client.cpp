@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "hadev.hpp"
+#include "hadev.cpp"
 
 int main() {
   HadevClient hadev;

@@ -26,10 +26,10 @@ add_custom_command(
 add_executable(server server.cpp heartbeat.cpp heartbeat.h protoh/blockstore.pb.cc protoh/blockstore.grpc.pb.cc protoh/heartbeat.pb.cc protoh/heartbeat.grpc.pb.cc)
 target_link_libraries(server grpc++)
 
-add_library(hadev STATIC hadev.cpp hadev.hpp protoh/blockstore.pb.cc protoh/blockstore.grpc.pb.cc)
+add_library(hadev STATIC hadev.cpp protoh/blockstore.pb.cc protoh/blockstore.grpc.pb.cc)
 target_link_libraries(hadev grpc++)
 
-add_executable(client client.cpp hadev.hpp)
+add_executable(client client.cpp)
 target_link_libraries(client hadev grpc++)
 
 

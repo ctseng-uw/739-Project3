@@ -1,5 +1,3 @@
-#include "hadev.hpp"
-
 #include <fcntl.h>
 #include <grpcpp/client_context.h>
 #include <grpcpp/grpcpp.h>
@@ -16,10 +14,19 @@
 #include "build/protoh/blockstore.pb.h"
 
 using grpc::ClientContext;
-class HadevClient::BlockStoreClient {
+
+class HadevClient {
  public:
-  BlockStoreClient(std::shared_ptr<grpc::Channel> channel)
-      : stub_(hadev::BlockStore::NewStub(channel)) {}
+  HadevClient() {
+    const std::string target_str = "0.0.0.0:50051";
+    grpc::ChannelArguments ch_args;
+
+    ch_args.SetMaxReceiveMessageSize(INT_MAX);
+    ch_args.SetMaxSendMessageSize(INT_MAX);
+
+    stub_ = hadev::BlockStore::NewStub((grpc::CreateCustomChannel(
+        target_str, grpc::InsecureChannelCredentials(), ch_args)));
+  }
 
   int Write(const int64_t addr, const std::string &data) {
     hadev::WriteRequest request;
@@ -46,28 +53,8 @@ class HadevClient::BlockStoreClient {
     return reply.data();
   }
 
+  ~HadevClient() { stub_.release(); }
+
  private:
   std::unique_ptr<hadev::BlockStore::Stub> stub_;
 };
-
-HadevClient::HadevClient() {
-  const std::string target_str = "0.0.0.0:50051";
-  grpc::ChannelArguments ch_args;
-
-  ch_args.SetMaxReceiveMessageSize(INT_MAX);
-  ch_args.SetMaxSendMessageSize(INT_MAX);
-
-  blockstoreClient =
-      std::make_unique<BlockStoreClient>((grpc::CreateCustomChannel(
-          target_str, grpc::InsecureChannelCredentials(), ch_args)));
-}
-
-HadevClient::~HadevClient() { blockstoreClient.release(); };
-
-int HadevClient::Write(const int64_t addr, const std::string &data) {
-  return blockstoreClient->Write(addr, data);
-}
-
-std::string HadevClient::Read(const int64_t addr) {
-  return blockstoreClient->Read(addr);
-}

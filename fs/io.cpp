@@ -15,7 +15,7 @@
 #ifdef LOCAL
 static int fd;
 #else
-#include "../hadev.hpp"
+#include "../hadev.cpp"
 static std::unique_ptr<HadevClient> client;
 #endif
 
