@@ -12,28 +12,28 @@
 #include "io.h"
 
 int tmp_ret;
-#define WRITE(addr, buf)                                                       \
-  tmp_ret = io_write(addr, (char *)buf);                                       \
-  if (tmp_ret == -1) {                                                         \
-    perror("write");                                                           \
-    assert(0);                                                                 \
-  } else if (tmp_ret != MFS_BLOCK_SIZE) {                                      \
-    printf("write ret: %d\n", tmp_ret);                                        \
-    assert(0);                                                                 \
+#define WRITE(addr, buf)                  \
+  tmp_ret = io_write(addr, (char *)buf);  \
+  if (tmp_ret == -1) {                    \
+    perror("write");                      \
+    assert(0);                            \
+  } else if (tmp_ret != MFS_BLOCK_SIZE) { \
+    printf("write ret: %d\n", tmp_ret);   \
+    assert(0);                            \
   }
 
-#define WRITEEND(buf)                                                          \
-  WRITE(cp->end, buf)                                                          \
+#define WRITEEND(buf) \
+  WRITE(cp->end, buf) \
   cp->end += MFS_BLOCK_SIZE;
 
-#define READ(addr, buf)                                                        \
-  tmp_ret = io_read(addr, (char *)buf);                                        \
-  if (tmp_ret == -1) {                                                         \
-    perror("read");                                                            \
-    assert(0);                                                                 \
-  } else if (tmp_ret != MFS_BLOCK_SIZE) {                                      \
-    printf("read ret: %d\n", tmp_ret);                                         \
-    assert(0);                                                                 \
+#define READ(addr, buf)                   \
+  tmp_ret = io_read(addr, (char *)buf);   \
+  if (tmp_ret == -1) {                    \
+    perror("read");                       \
+    assert(0);                            \
+  } else if (tmp_ret != MFS_BLOCK_SIZE) { \
+    printf("read ret: %d\n", tmp_ret);    \
+    assert(0);                            \
   }
 
 #define MAX_INODE (4096)
@@ -100,15 +100,13 @@ void initfs() {
 void syncfs() { WRITE(0, cp); }
 
 Inode_t *finode(int inum) {
-  if (inum < 0 && inum >= MAX_INODE)
-    return NULL;
+  if (inum < 0 && inum >= MAX_INODE) return NULL;
   int off = cp->inode_map_ptrs[inum / INODE_IN_PIECE];
   Inodemap_t im;
   READ(off, &im);
   int idx = inum % INODE_IN_PIECE;
   int off2 = im.inode_ptrs[idx];
-  if (off2 == -1)
-    return NULL;
+  if (off2 == -1) return NULL;
   Inode_t *inode = (Inode_t *)malloc(sizeof(Inode_t));
   READ(off2, inode);
   return inode;
@@ -138,8 +136,7 @@ void commit_inode(int inum, Inode_t *inode) {
 int findfree() {
   for (int i = 0; i < MAX_PIECE; i++) {
     int off = cp->inode_map_ptrs[i];
-    if (off == -1)
-      return i * INODE_IN_PIECE;
+    if (off == -1) return i * INODE_IN_PIECE;
     Inodemap_t im;
     READ(off, &im);
     for (int j = 0; j < INODE_IN_PIECE; j++) {
@@ -173,8 +170,7 @@ int MFS_Lookup(int pinum, char *name) {
 
 int MFS_Stat(int inum, MFS_Stat_t *stat) {
   Inode_t *inode = finode(inum);
-  if (inode == NULL)
-    return -1;
+  if (inode == NULL) return -1;
   stat->type = inode->type;
   stat->size = inode->size;
   free(inode);
@@ -182,8 +178,7 @@ int MFS_Stat(int inum, MFS_Stat_t *stat) {
 }
 
 int MFS_Creat(int pinum, int type, char *name) {
-  if (strlen(name) > MFS_MAX_NAME)
-    return -1;
+  if (strlen(name) > MFS_MAX_NAME) return -1;
 
   Inode_t *pinode = finode(pinum);
   if (pinode->type != MFS_DIRECTORY) {
@@ -192,13 +187,11 @@ int MFS_Creat(int pinum, int type, char *name) {
   }
 
   for (int i = 0; i < MFS_MAX_DPTR; i++) {
-    if (pinode->dptrs[i] == -1)
-      continue;
+    if (pinode->dptrs[i] == -1) continue;
     Dblock_t tmpdb;
     READ(pinode->dptrs[i], &tmpdb);
     for (int j = 0; j < MAX_FILE_IN_DBLOCK; j++) {
-      if (tmpdb.dent[j].inum == -1)
-        continue;
+      if (tmpdb.dent[j].inum == -1) continue;
       if (strncmp(tmpdb.dent[j].name, name, MFS_MAX_NAME) == 0) {
         free(pinode);
         return 0;
@@ -245,8 +238,7 @@ int MFS_Creat(int pinum, int type, char *name) {
           break;
         }
       }
-      if (eidx != -1)
-        break;
+      if (eidx != -1) break;
     }
   }
 
@@ -268,14 +260,11 @@ int MFS_Creat(int pinum, int type, char *name) {
 }
 
 int MFS_Write(int inum, const char *buffer, int block, int size) {
-  if (block < 0 || block >= MFS_MAX_DPTR)
-    return -1;
+  if (block < 0 || block >= MFS_MAX_DPTR) return -1;
   Inode_t *inode = finode(inum);
-  if (inode == NULL || inode->type == MFS_DIRECTORY)
-    return -1;
+  if (inode == NULL || inode->type == MFS_DIRECTORY) return -1;
   for (int i = 0; i < block; i++) {
-    if (inode->dptrs[i] != -1)
-      continue;
+    if (inode->dptrs[i] != -1) continue;
     inode->dptrs[i] = cp->end;
     WRITEEND(ZBLOCK);
   }
@@ -289,13 +278,10 @@ int MFS_Write(int inum, const char *buffer, int block, int size) {
 }
 
 int MFS_Read(int inum, char *buffer, int block) {
-  if (block < 0 || block >= MFS_MAX_DPTR)
-    return -1;
+  if (block < 0 || block >= MFS_MAX_DPTR) return -1;
   Inode_t *inode = finode(inum);
-  if (inode == NULL)
-    return -1;
-  if (inode->dptrs[block] == -1)
-    return 0;
+  if (inode == NULL) return -1;
+  if (inode->dptrs[block] == -1) return 0;
   READ(inode->dptrs[block], buffer);
   int size = MFS_BLOCK_SIZE;
   if ((block + 1) * MFS_BLOCK_SIZE > inode->size) {
@@ -314,12 +300,10 @@ int MFS_Unlink(int pinum, char *name) {
   Dblock_t db;
   int foundinum = -1;
   for (int i = 0; i < MFS_MAX_DPTR; i++) {
-    if (inode->dptrs[i] == -1)
-      continue;
+    if (inode->dptrs[i] == -1) continue;
     READ(inode->dptrs[i], &db);
     for (int j = 0; j < MAX_FILE_IN_DBLOCK; j++) {
-      if (db.dent[j].inum == -1)
-        continue;
+      if (db.dent[j].inum == -1) continue;
       if (strncmp(db.dent[j].name, name, MFS_MAX_NAME) == 0) {
         Inode_t *cinode = finode(db.dent[j].inum);
         if (cinode->type == MFS_DIRECTORY && cinode->size != 0) {
@@ -337,13 +321,11 @@ int MFS_Unlink(int pinum, char *name) {
         break;
       }
     }
-    if (foundinum != -1)
-      break;
+    if (foundinum != -1) break;
   }
 
   free(inode);
-  if (foundinum == -1)
-    return 0;
+  if (foundinum == -1) return 0;
   commit_inode(foundinum, NULL);
   syncfs();
   return 0;

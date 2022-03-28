@@ -33,8 +33,7 @@ int translate(const char *path) {
 
 static int do_getattr(const char *path, struct stat *st) {
   int inum = translate(path);
-  if (inum < 0)
-    return -ENOENT;
+  if (inum < 0) return -ENOENT;
   st->st_uid = getuid();
   st->st_gid = getgid();
   st->st_atime = time(NULL);
@@ -57,13 +56,11 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
   for (int i = 0; i < MFS_MAX_DPTR; i++) {
     int ret = MFS_Read(inum, block, i);
     CHK(ret);
-    if (ret == 0)
-      continue;
+    if (ret == 0) continue;
     char *ptr = block;
     while (ptr - block < MFS_BLOCK_SIZE) {
       MFS_DirEnt_t *dent = (MFS_DirEnt_t *)ptr;
-      if (dent->inum != -1)
-        filler(buffer, dent->name, NULL, 0);
+      if (dent->inum != -1) filler(buffer, dent->name, NULL, 0);
       ptr += sizeof(MFS_DirEnt_t);
     }
   }
@@ -72,8 +69,7 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler,
 
 static int do_open(const char *path, struct fuse_file_info *fi) {
   int inum = translate(path);
-  if (inum < 0)
-    return -ENOENT;
+  if (inum < 0) return -ENOENT;
   fi->fh = inum;
   return 0;
 }
@@ -101,8 +97,7 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset,
   while (cursz < size) {
     int ret = MFS_Read(inum, bkbuf, cur);
     CHK(ret);
-    if (ret == 0)
-      return cursz;
+    if (ret == 0) return cursz;
     memcpy(buffer + cursz, bkbuf, ret);
     cursz += ret;
     cur++;

@@ -1,23 +1,27 @@
 #include "heartbeat.h"
 
 /* ----------------- Heartbeat Server ----------------- */
-HeartbeatServer::HeartbeatServer(bool* i_am_primary) : i_am_primary(i_am_primary) { 
-  fd = open(DEVICE, O_RDWR); assert(fd >= 0); 
+HeartbeatServer::HeartbeatServer(bool *i_am_primary)
+    : i_am_primary(i_am_primary) {
+  fd = open(DEVICE, O_RDWR);
+  assert(fd >= 0);
 }
-  
-grpc::Status HeartbeatServer::heartbeat(grpc::ServerContext *context, const hafs::Request *req,
-          hafs::Reply *reply) {
+
+grpc::Status HeartbeatServer::heartbeat(grpc::ServerContext *context,
+                                        const hafs::Request *req,
+                                        hafs::Reply *reply) {
   if (req->is_write()) {
     lseek(fd, req->addr(), SEEK_SET);
     write(fd, req->data().c_str(), 4096);
   }
-  
+
   reply->set_yeah(true);
   return grpc::Status::OK;
 }
 
-grpc::Status HeartbeatServer::is_primary(grpc::ServerContext *context, const hafs::Blank *req,
-          hafs::Reply *reply) {
+grpc::Status HeartbeatServer::is_primary(grpc::ServerContext *context,
+                                         const hafs::Blank *req,
+                                         hafs::Reply *reply) {
   reply->set_yeah(*i_am_primary);
   return grpc::Status::OK;
 }
@@ -25,7 +29,7 @@ grpc::Status HeartbeatServer::is_primary(grpc::ServerContext *context, const haf
 /* ----------------- Heartbeat Client Exception ----------------- */
 RPCFailException::RPCFailException(grpc::Status status) : status(status) {}
 
-const char* RPCFailException::what() const throw() {
+const char *RPCFailException::what() const throw() {
   std::stringstream ss;
   ss << "gRPC status " << status.error_code() << ": " << status.error_message();
   return ss.str().c_str();
@@ -74,4 +78,3 @@ bool HeartbeatClient::write(uint64_t addr, std::string data) {
   }
   return reply.yeah();
 }
-

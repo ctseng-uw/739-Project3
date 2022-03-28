@@ -141,3 +141,4 @@ compile_commands.json
 server_device.bin
 *.a
 mfsfuse
+fake_device

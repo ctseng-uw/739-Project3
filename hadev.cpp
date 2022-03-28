@@ -17,7 +17,7 @@
 
 using grpc::ClientContext;
 class HadevClient::GRPCClient {
-public:
+ public:
   GRPCClient(std::shared_ptr<grpc::Channel> channel)
       : stub_(hadev::gRPCService::NewStub(channel)) {}
 
@@ -46,7 +46,7 @@ public:
     return reply.data();
   }
 
-private:
+ private:
   std::unique_ptr<hadev::gRPCService::Stub> stub_;
 };
 
