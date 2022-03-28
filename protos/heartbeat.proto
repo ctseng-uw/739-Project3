@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package hafs;
+
+message Request {
+	bool is_write = 1;
+  optional int64 addr = 2; 
+  optional bytes data = 3;
+}
+
+message Reply {
+  bool yeah = 1;
+}
+
+message Blank {}
+
+service Heartbeat {
+  rpc is_primary (Blank) returns (Reply) {}
+  rpc heartbeat (Request) returns (Reply) {}
+}
