@@ -36,13 +36,9 @@ class HeartbeatServiceImpl final : public hadev::Heartbeat::Service {
 
 /* ----------------- Heartbeat Client ----------------- */
 
-class RPCFailException : public std::exception {
+class RPCFailException : public std::runtime_error {
  public:
   RPCFailException(grpc::Status status);
-  virtual const char *what() const throw();
-
- private:
-  grpc::Status status;
 };
 
 class HeartbeatClient {

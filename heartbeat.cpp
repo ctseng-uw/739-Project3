@@ -29,13 +29,13 @@ grpc::Status HeartbeatServiceImpl::is_primary(grpc::ServerContext *context,
 }
 
 /* ----------------- Heartbeat Client Exception ----------------- */
-RPCFailException::RPCFailException(grpc::Status status) : status(status) {}
-
-const char *RPCFailException::what() const throw() {
-  std::stringstream ss;
-  ss << "gRPC status " << status.error_code() << ": " << status.error_message();
-  return ss.str().c_str();  // TODO: fix
-}
+RPCFailException::RPCFailException(grpc::Status status)
+    : std::runtime_error(([&status]() {
+        std::stringstream ss;
+        ss << "gRPC status " << status.error_code() << ": "
+           << status.error_message();
+        return ss.str();
+      })()) {}
 
 /* ----------------- Heartbeat Client  ----------------- */
 HeartbeatClient::HeartbeatClient(std::shared_ptr<grpc::Channel> channel)
@@ -60,7 +60,7 @@ bool HeartbeatClient::BeatHeart() {
 
   grpc::Status status = stub_->RepliWrite(&context, request, &reply);
   if (!status.ok()) {
-    throw new RPCFailException(status);
+    throw RPCFailException(status);
   }
   return reply.yeah();
 }
@@ -74,7 +74,7 @@ bool HeartbeatClient::Write(uint64_t addr, std::string data) {
   request.set_data(data);
   grpc::Status status = stub_->RepliWrite(&context, request, &reply);
   if (!status.ok()) {
-    throw new RPCFailException(status);
+    throw RPCFailException(status);
   }
   return reply.yeah();
 }
