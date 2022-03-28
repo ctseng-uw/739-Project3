@@ -10,6 +10,6 @@ class HadevClient {
   std::string Read(const int64_t);
 
  private:
-  class GRPCClient;
-  std::unique_ptr<GRPCClient> gRPCClient;
+  class BlockStoreClient;
+  std::unique_ptr<BlockStoreClient> blockstoreClient;
 };

@@ -1,9 +1,8 @@
 syntax = "proto3";
 
-package hafs;
+package hadev;
 
 message Request {
-	bool is_write = 1;
   optional int64 addr = 2; 
   optional bytes data = 3;
 }
@@ -16,5 +15,5 @@ message Blank {}
 
 service Heartbeat {
   rpc is_primary (Blank) returns (Reply) {}
-  rpc heartbeat (Request) returns (Reply) {}
+  rpc RepliWrite (Request) returns (Reply) {}
 }

@@ -17,16 +17,16 @@ set(FETCHCONTENT_QUIET OFF)
 fetchcontent_makeavailable(gRPC)
 
 add_custom_command(
-  OUTPUT protoh/hello.pb.cc protoh/hello.grpc.pb.cc protoh/heartbeat.pb.cc protoh/heartbeat.grpc.pb.cc
+  OUTPUT protoh/blockstore.pb.cc protoh/blockstore.grpc.pb.cc protoh/heartbeat.pb.cc protoh/heartbeat.grpc.pb.cc
   COMMAND ./gen_proto.sh
-  DEPENDS protos/hello.proto protos/heartbeat.proto protoc
+  DEPENDS protos/blockstore.proto protos/heartbeat.proto protoc
 )
 
 
-add_executable(server server.cpp heartbeat.cpp heartbeat.h protoh/hello.pb.cc protoh/hello.grpc.pb.cc protoh/heartbeat.pb.cc protoh/heartbeat.grpc.pb.cc)
+add_executable(server server.cpp heartbeat.cpp heartbeat.h protoh/blockstore.pb.cc protoh/blockstore.grpc.pb.cc protoh/heartbeat.pb.cc protoh/heartbeat.grpc.pb.cc)
 target_link_libraries(server grpc++)
 
-add_library(hadev STATIC hadev.cpp hadev.hpp protoh/hello.pb.cc protoh/hello.grpc.pb.cc)
+add_library(hadev STATIC hadev.cpp hadev.hpp protoh/blockstore.pb.cc protoh/blockstore.grpc.pb.cc)
 target_link_libraries(hadev grpc++)
 
 add_executable(client client.cpp hadev.hpp)

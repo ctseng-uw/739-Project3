@@ -12,14 +12,14 @@
 #include <memory>
 #include <string>
 
-#include "build/protoh/hello.grpc.pb.h"
-#include "build/protoh/hello.pb.h"
+#include "build/protoh/blockstore.grpc.pb.h"
+#include "build/protoh/blockstore.pb.h"
 
 using grpc::ClientContext;
-class HadevClient::GRPCClient {
+class HadevClient::BlockStoreClient {
  public:
-  GRPCClient(std::shared_ptr<grpc::Channel> channel)
-      : stub_(hadev::gRPCService::NewStub(channel)) {}
+  BlockStoreClient(std::shared_ptr<grpc::Channel> channel)
+      : stub_(hadev::BlockStore::NewStub(channel)) {}
 
   int Write(const int64_t addr, const std::string &data) {
     hadev::WriteRequest request;
@@ -47,7 +47,7 @@ class HadevClient::GRPCClient {
   }
 
  private:
-  std::unique_ptr<hadev::gRPCService::Stub> stub_;
+  std::unique_ptr<hadev::BlockStore::Stub> stub_;
 };
 
 HadevClient::HadevClient() {
@@ -57,16 +57,17 @@ HadevClient::HadevClient() {
   ch_args.SetMaxReceiveMessageSize(INT_MAX);
   ch_args.SetMaxSendMessageSize(INT_MAX);
 
-  gRPCClient = std::make_unique<GRPCClient>((grpc::CreateCustomChannel(
-      target_str, grpc::InsecureChannelCredentials(), ch_args)));
+  blockstoreClient =
+      std::make_unique<BlockStoreClient>((grpc::CreateCustomChannel(
+          target_str, grpc::InsecureChannelCredentials(), ch_args)));
 }
 
-HadevClient::~HadevClient() { gRPCClient.release(); };
+HadevClient::~HadevClient() { blockstoreClient.release(); };
 
 int HadevClient::Write(const int64_t addr, const std::string &data) {
-  return gRPCClient->Write(addr, data);
+  return blockstoreClient->Write(addr, data);
 }
 
 std::string HadevClient::Read(const int64_t addr) {
-  return gRPCClient->Read(addr);
+  return blockstoreClient->Read(addr);
 }

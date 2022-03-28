@@ -21,7 +21,7 @@ message ReadReply {
 }
 
 
-service gRPCService {
+service BlockStore {
   rpc Write (WriteRequest) returns (WriteReply) {}
   rpc Read (ReadRequest) returns (ReadReply) {}
 }

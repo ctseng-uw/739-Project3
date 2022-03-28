@@ -17,21 +17,21 @@
 #include "build/protoh/heartbeat.pb.h"
 
 // #define DEVICE "/dev/sda4"
-#define DEVICE "/users/c5h11oh/739-Project3/fake_device"
+#define DEVICE "./fake_device"
 
 /* ----------------- Heartbeat Server ----------------- */
 
-class HeartbeatServer final : public hafs::Heartbeat::Service {
+class HeartbeatServiceImpl final : public hadev::Heartbeat::Service {
  public:
-  HeartbeatServer(bool *i_am_primary);
-  grpc::Status heartbeat(grpc::ServerContext *context, const hafs::Request *req,
-                         hafs::Reply *reply);
-  grpc::Status is_primary(grpc::ServerContext *context, const hafs::Blank *req,
-                          hafs::Reply *reply);
+  HeartbeatServiceImpl(std::shared_ptr<bool> i_am_primary);
+  grpc::Status RepliWrite(grpc::ServerContext *context,
+                          const hadev::Request *req, hadev::Reply *reply);
+  grpc::Status is_primary(grpc::ServerContext *context, const hadev::Blank *req,
+                          hadev::Reply *reply);
 
  private:
   int fd;
-  bool *i_am_primary;
+  std::shared_ptr<bool> i_am_primary;
 };
 
 /* ----------------- Heartbeat Client ----------------- */
@@ -49,9 +49,9 @@ class HeartbeatClient {
  public:
   HeartbeatClient(std::shared_ptr<grpc::Channel> channel);
   bool is_primary();
-  bool heartbeat();
-  bool write(uint64_t addr, std::string data);
+  bool BeatHeart();
+  bool Write(uint64_t addr, std::string data);
 
  private:
-  std::unique_ptr<hafs::Heartbeat::Stub> stub_;
+  std::unique_ptr<hadev::Heartbeat::Stub> stub_;
 };
