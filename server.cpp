@@ -25,9 +25,8 @@ const std::string HEARTTBEATPORT = "53705";
 const std::string BLOCKSTOREPORT = "50051";
 const uint32_t TIMEOUTMS = 10;
 
-template <typename T>
 std::unique_ptr<grpc::Server> create_server(const std::string &server_address,
-                                            T *service) {
+                                            grpc::Service *service) {
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.SetMaxSendMessageSize(INT_MAX);
