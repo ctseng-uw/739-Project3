@@ -12,4 +12,5 @@ class HeartbeatServiceImpl final : public hadev::Heartbeat::Service {
  private:
   int fd;
   std::shared_ptr<bool> i_am_primary;
+  std::mutex mutex;
 };
