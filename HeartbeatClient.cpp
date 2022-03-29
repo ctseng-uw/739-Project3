@@ -1,34 +1,4 @@
-#include "heartbeat.h"
-
-#include <fcntl.h>
-
-/* ----------------- Heartbeat Server ----------------- */
-HeartbeatServiceImpl::HeartbeatServiceImpl(std::shared_ptr<bool> i_am_primary)
-    : i_am_primary(i_am_primary) {
-  fd = open(DEVICE, O_CREAT | O_RDWR, 0644);
-  assert(fd >= 0);
-}
-
-grpc::Status HeartbeatServiceImpl::RepliWrite(grpc::ServerContext *context,
-                                              const hadev::Request *req,
-                                              hadev::Reply *reply) {
-  if (req->has_data() && req->has_addr()) {
-    assert(req->data().length() == 4096);
-    lseek(fd, req->addr(), SEEK_SET);
-    write(fd, req->data().c_str(), 4096);
-    fsync(fd);
-  }
-
-  reply->set_yeah(true);
-  return grpc::Status::OK;
-}
-
-grpc::Status HeartbeatServiceImpl::is_primary(grpc::ServerContext *context,
-                                              const hadev::Blank *req,
-                                              hadev::Reply *reply) {
-  reply->set_yeah(*i_am_primary);
-  return grpc::Status::OK;
-}
+#include "HeartbeatClient.hpp"
 
 /* ----------------- Heartbeat Client Exception ----------------- */
 RPCFailException::RPCFailException(grpc::Status status)
@@ -36,7 +6,8 @@ RPCFailException::RPCFailException(grpc::Status status)
                          ": " + status.error_message()) {}
 
 /* ----------------- Heartbeat Client  ----------------- */
-HeartbeatClient::HeartbeatClient(std::shared_ptr<grpc::Channel> channel)
+HeartbeatClient::HeartbeatClient(
+    const std::shared_ptr<grpc::ChannelInterface>& channel)
     : stub_(hadev::Heartbeat::NewStub(channel)) {}
 
 bool HeartbeatClient::is_primary() {

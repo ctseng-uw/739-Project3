@@ -10,14 +10,14 @@
 #include <memory>
 #include <string>
 
-#include "build/protoh/blockstore.grpc.pb.h"
-#include "build/protoh/blockstore.pb.h"
+#include "includes/blockstore.grpc.pb.h"
+#include "includes/blockstore.pb.h"
 
 using grpc::ClientContext;
 
-class HadevClient {
+class BlockStoreClient {
  public:
-  HadevClient() {
+  BlockStoreClient() {
     const std::string target_str = "0.0.0.0:50051";
     grpc::ChannelArguments ch_args;
 
@@ -55,7 +55,7 @@ class HadevClient {
     return reply.data();
   }
 
-  ~HadevClient() { stub_.release(); }
+  ~BlockStoreClient() { stub_.release(); }
 
  private:
   std::unique_ptr<hadev::BlockStore::Stub> stub_;

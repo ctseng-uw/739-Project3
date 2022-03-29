@@ -1,9 +1,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "build/protoh/blockstore.grpc.pb.h"
-#include "build/protoh/blockstore.pb.h"
-#include "heartbeat.h"
+#include "HeartbeatClient.hpp"
+#include "includes/blockstore.grpc.pb.h"
+#include "includes/blockstore.pb.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;

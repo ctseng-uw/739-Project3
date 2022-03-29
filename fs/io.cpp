@@ -15,8 +15,8 @@
 #ifdef LOCAL
 static int fd;
 #else
-#include "../hadev.cpp"
-static std::unique_ptr<HadevClient> client;
+#include "../BlockStoreClient.cpp"
+static std::unique_ptr<BlockStoreClient> client;
 #endif
 
 int io_init() {
@@ -32,7 +32,7 @@ int io_init() {
     assert(0);
   }
 #else
-  client = std::make_unique<HadevClient>();
+  client = std::make_unique<BlockStoreClient>();
   return 0;
 #endif
 }

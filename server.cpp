@@ -12,8 +12,9 @@
 #include <iostream>
 #include <thread>
 
-#include "blockstore.cpp"
-#include "heartbeat.h"
+#include "BlockStoreServiceImpl.cpp"
+#include "HeartbeatClient.hpp"
+#include "HeartbeatServiceImpl.hpp"
 
 using grpc::Server;
 using grpc::ServerBuilder;
