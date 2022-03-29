@@ -18,31 +18,11 @@
 #include "ServerState.cpp"
 #include "grpcpp/resource_quota.h"
 
-using grpc::Server;
 using grpc::ServerBuilder;
 
 const std::array<std::string, 2> LAN_ADDR{"server0", "server1"};
-const std::string HEARTTBEATPORT = "53705";
-const std::string BLOCKSTOREPORT = "50051";
+const std::string PORT = "50051";
 const uint32_t TIMEOUTMS = 10;
-
-std::unique_ptr<grpc::Server> create_server(const std::string &server_address,
-                                            grpc::Service *service,
-                                            int max_threads = -1) {
-  grpc::ServerBuilder builder;
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  builder.SetMaxSendMessageSize(INT_MAX);
-  builder.SetMaxReceiveMessageSize(INT_MAX);
-  builder.SetMaxMessageSize(INT_MAX);
-  if (max_threads == -1) {
-    grpc::ResourceQuota rq;
-    rq.SetMaxThreads(max_threads);
-    builder.SetResourceQuota(rq);
-  }
-  builder.RegisterService(service);
-  std::cout << "Server listening on " << server_address << std::endl;
-  return builder.BuildAndStart();
-}
 
 int main(int argc, char **argv) {
   if (argc != 3) {
@@ -61,19 +41,23 @@ int main(int argc, char **argv) {
   ch_args.SetMaxReceiveMessageSize(INT_MAX);
   ch_args.SetMaxSendMessageSize(INT_MAX);
 
-  auto heartbeat_client =
-      std::make_shared<HeartbeatClient>(grpc::CreateCustomChannel(
-          LAN_ADDR[1 - my_node_number] + ":" + HEARTTBEATPORT,
-          grpc::InsecureChannelCredentials(), ch_args));
+  auto heartbeat_client = std::make_shared<HeartbeatClient>(
+      grpc::CreateCustomChannel(LAN_ADDR[1 - my_node_number] + ":" + PORT,
+                                grpc::InsecureChannelCredentials(), ch_args));
 
   BlockStoreServiceImpl blockstore_service(heartbeat_client, server_state);
-  auto blockstore_server =
-      create_server("0.0.0.0:" + BLOCKSTOREPORT, &blockstore_service);
-
-  // TODO: don't start heartbeat_server if not backup?
   HeartbeatServiceImpl heartbeat_service(i_am_primary_ptr);
-  auto heartbeat_server =
-      create_server("0.0.0.0:" + HEARTTBEATPORT, &heartbeat_service, 1);
+
+  grpc::ServerBuilder builder;
+  const std::string server_address = "0.0.0.0:" + PORT;
+  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  builder.SetMaxSendMessageSize(INT_MAX);
+  builder.SetMaxReceiveMessageSize(INT_MAX);
+  builder.SetMaxMessageSize(INT_MAX);
+  builder.RegisterService(&blockstore_service);
+  builder.RegisterService(&heartbeat_service);
+  std::cout << "Server listening on " << server_address << std::endl;
+  auto server = builder.BuildAndStart();
 
   while (true) {
     server_state->WaitUntilIsPrimary();
