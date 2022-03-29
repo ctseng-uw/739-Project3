@@ -14,7 +14,7 @@ class HeartbeatClient {
   HeartbeatClient(const std::shared_ptr<grpc::ChannelInterface>& channel);
   bool is_primary();
   bool BeatHeart();
-  bool Write(uint64_t addr, std::string data);
+  grpc::Status Write(uint64_t addr, const std::string& data);
 
  private:
   std::unique_ptr<hadev::Heartbeat::Stub> stub_;

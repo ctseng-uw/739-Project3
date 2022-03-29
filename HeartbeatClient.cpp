@@ -34,7 +34,7 @@ bool HeartbeatClient::BeatHeart() {
   return reply.yeah();
 }
 
-bool HeartbeatClient::Write(uint64_t addr, std::string data) {
+grpc::Status HeartbeatClient::Write(uint64_t addr, const std::string& data) {
   hadev::Request request;
   grpc::ClientContext context;
   hadev::Reply reply;
@@ -42,8 +42,5 @@ bool HeartbeatClient::Write(uint64_t addr, std::string data) {
   request.set_addr(addr);
   request.set_data(data);
   grpc::Status status = stub_->RepliWrite(&context, request, &reply);
-  if (!status.ok()) {
-    throw RPCFailException(status);
-  }
-  return reply.yeah();
+  return status;
 }
