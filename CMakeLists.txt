@@ -17,24 +17,27 @@ set(FETCHCONTENT_QUIET OFF)
 fetchcontent_makeavailable(gRPC)
 
 
-add_custom_command(
-  OUTPUT includes/blockstore.pb.cc includes/blockstore.grpc.pb.cc includes/heartbeat.pb.cc includes/heartbeat.grpc.pb.cc
+file(GLOB PROTOBUF_FILES "protos/*")
+add_custom_target(
+  gen_proto
   COMMAND _deps/grpc-build/third_party/protobuf/protoc
-          --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/protos
-          --cpp_out=${CMAKE_CURRENT_SOURCE_DIR}/includes
-          --grpc_out=${CMAKE_CURRENT_SOURCE_DIR}/includes
-          --plugin=protoc-gen-grpc=_deps/grpc-build/grpc_cpp_plugin
-          ${CMAKE_CURRENT_SOURCE_DIR}/protos/*.proto
-  DEPENDS protos/blockstore.proto protos/heartbeat.proto protoc
+  --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/protos
+  --cpp_out=${CMAKE_CURRENT_SOURCE_DIR}/includes
+  --grpc_out=${CMAKE_CURRENT_SOURCE_DIR}/includes
+  --plugin=protoc-gen-grpc=_deps/grpc-build/grpc_cpp_plugin
+  ${CMAKE_CURRENT_SOURCE_DIR}/protos/*.proto
+  DEPENDS ${PROTOBUF_FILES} protoc
 )
 
 file(GLOB PROTOBUF_INCLUDES "includes/*.pb.cc" "includes/*.pb.h")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/includes)
-add_executable(server server.cpp HeartbeatServiceImpl.cpp HeartbeatServiceImpl.hpp HeartbeatClient.cpp HeartbeatClient.hpp ${PROTOBUF_INCLUDES})
+add_executable(server server.cpp HeartbeatServiceImpl.cpp HeartbeatServiceImpl.hpp HeartbeatClient.cpp ${PROTOBUF_INCLUDES})
+add_dependencies(server gen_proto)
 target_link_libraries(server grpc++)
 
 add_library(hadev STATIC BlockStoreClient.cpp ${PROTOBUF_INCLUDES})
+add_dependencies(hadev gen_proto)
 target_link_libraries(hadev grpc++)
 
 add_executable(client client.cpp)

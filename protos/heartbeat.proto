@@ -3,8 +3,8 @@ syntax = "proto3";
 package hadev;
 
 message Request {
-  optional int64 addr = 2; 
-  optional bytes data = 3;
+  optional int64 addr = 1; 
+  optional bytes data = 2;
 }
 
 message Reply {
