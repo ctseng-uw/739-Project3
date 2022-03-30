@@ -29,8 +29,9 @@ class HeartbeatClient {
   std::atomic<uint64_t> seq;
   std::queue<LogEnt> log;
   std::mutex mutex;
-  std::shared_ptr<bool> i_am_primary;
+  std::shared_ptr<int> i_am_primary;
   std::shared_ptr<struct timespec> last_heartbeat;
+  int my_node_number;
 
   auto BeatHeart() {
     hadev::Request request;
@@ -41,17 +42,16 @@ class HeartbeatClient {
     return status;
   }
 
-  // TODO: Remove this? Use this?
-  bool is_primary() {
+  int is_primary() {
     hadev::Blank request;
     grpc::ClientContext context;
-    hadev::Reply reply;
+    hadev::ReplyState reply;
     auto status = stub_->is_primary(&context, request, &reply);
     if (!status.ok()) {
       throw RPCFailException(status);
       // throw std::exception();
     }
-    return reply.yeah();
+    return reply.state();
   }
 
   grpc::Status RepliWrite(int64_t addr, const std::string& data) {
@@ -89,12 +89,40 @@ class HeartbeatClient {
     puts("Recovery completed");
   }
 
+  void setIAMPrimary() {
+    while (true) {
+      int you_are_primary;
+      try {
+        you_are_primary = is_primary();
+      }
+      catch (RPCFailException e) {
+        continue;
+      }
+      if (you_are_primary == 0) {
+        if (my_node_number == 0) {
+          *i_am_primary = 2;
+        }
+        else {
+          *i_am_primary = 1;
+        }
+      }
+      else if (you_are_primary == 1) {
+        *i_am_primary = 2;
+      }
+      else if (you_are_primary == 2) {
+        *i_am_primary = 1;
+      }
+      break;
+    }
+  }
+
  public:
   HeartbeatClient(const std::shared_ptr<grpc::ChannelInterface>& channel,
-                  std::shared_ptr<bool> i_am_primary,
-                  std::shared_ptr<struct timespec> last_heartbeat)
+                  std::shared_ptr<int> i_am_primary,
+                  std::shared_ptr<struct timespec> last_heartbeat,
+                  int my_node_number)
       : stub_(hadev::Heartbeat::NewStub(channel)), i_am_primary(i_am_primary),
-        last_heartbeat(last_heartbeat) {
+        last_heartbeat(last_heartbeat), my_node_number(my_node_number) {
     is_backup_alive.store(0);
     seq.store(0);
   };
@@ -120,17 +148,18 @@ class HeartbeatClient {
   }
 
   void Start() {
+    setIAMPrimary();
     clock_gettime(CLOCK_MONOTONIC, &*last_heartbeat);
     while (true) {
       // TODO:
-      if (!*i_am_primary) {
-        // usleep(TIMEOUTMS * 300);
+      if (*i_am_primary == 1) {
+        usleep(TIMEOUTMS * 300);
         struct timespec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
         float diff_ms = (now.tv_sec - (*last_heartbeat).tv_sec) * 1000 +
                     (float)(now.tv_nsec - (*last_heartbeat).tv_nsec) / 1000000;
         if (diff_ms > TIMEOUTMS) {
-          *i_am_primary = true;
+          *i_am_primary = 2;
         }
         continue;
       }

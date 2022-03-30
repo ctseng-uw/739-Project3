@@ -5,7 +5,7 @@
 #include "macro.h"
 #define DEVICE "./fake_device.bin"
 
-HeartbeatServiceImpl::HeartbeatServiceImpl(std::shared_ptr<bool> i_am_primary,
+HeartbeatServiceImpl::HeartbeatServiceImpl(std::shared_ptr<int> i_am_primary,
                                 std::shared_ptr<struct timespec> last_heartbeat)
     : i_am_primary(i_am_primary), last_heartbeat(last_heartbeat) {
   fd = open(DEVICE, O_CREAT | O_RDWR, 0644);
@@ -31,7 +31,7 @@ grpc::Status HeartbeatServiceImpl::RepliWrite(grpc::ServerContext *context,
 
 grpc::Status HeartbeatServiceImpl::is_primary(grpc::ServerContext *context,
                                               const hadev::Blank *req,
-                                              hadev::Reply *reply) {
-  reply->set_yeah(*i_am_primary);
+                                              hadev::ReplyState *reply) {
+  reply->set_state(*i_am_primary);
   return grpc::Status::OK;
 }
