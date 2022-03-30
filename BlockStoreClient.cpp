@@ -12,20 +12,21 @@
 
 #include "includes/blockstore.grpc.pb.h"
 #include "includes/blockstore.pb.h"
+#include "macro.h"
 
 using grpc::ClientContext;
 
 class BlockStoreClient {
  public:
-  BlockStoreClient() {
-    const std::string target_str = "server0:50051";
+  BlockStoreClient(std::string server_name = "node0") {
     grpc::ChannelArguments ch_args;
 
     ch_args.SetMaxReceiveMessageSize(INT_MAX);
     ch_args.SetMaxSendMessageSize(INT_MAX);
 
     stub_ = hadev::BlockStore::NewStub((grpc::CreateCustomChannel(
-        target_str, grpc::InsecureChannelCredentials(), ch_args)));
+        (server_name + ":" + std::to_string(PORT)),
+        grpc::InsecureChannelCredentials(), ch_args)));
   }
 
   int Write(const int64_t addr, const std::string &data) {

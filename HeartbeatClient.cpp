@@ -2,6 +2,8 @@
 #include <exception>
 #include <queue>
 
+#include <time.h>
+
 #include "includes/heartbeat.grpc.pb.h"
 #include "includes/heartbeat.pb.h"
 const uint32_t TIMEOUTMS = 10;
@@ -28,6 +30,7 @@ class HeartbeatClient {
   std::queue<LogEnt> log;
   std::mutex mutex;
   std::shared_ptr<bool> i_am_primary;
+  std::shared_ptr<struct timespec> last_heartbeat;
 
   auto BeatHeart() {
     hadev::Request request;
@@ -88,8 +91,10 @@ class HeartbeatClient {
 
  public:
   HeartbeatClient(const std::shared_ptr<grpc::ChannelInterface>& channel,
-                  std::shared_ptr<bool> i_am_primary)
-      : stub_(hadev::Heartbeat::NewStub(channel)), i_am_primary(i_am_primary) {
+                  std::shared_ptr<bool> i_am_primary,
+                  std::shared_ptr<struct timespec> last_heartbeat)
+      : stub_(hadev::Heartbeat::NewStub(channel)), i_am_primary(i_am_primary),
+        last_heartbeat(last_heartbeat) {
     is_backup_alive.store(0);
     seq.store(0);
   };
@@ -115,10 +120,18 @@ class HeartbeatClient {
   }
 
   void Start() {
+    clock_gettime(CLOCK_MONOTONIC, &*last_heartbeat);
     while (true) {
       // TODO:
       if (!*i_am_primary) {
-        usleep(TIMEOUTMS * 300);
+        // usleep(TIMEOUTMS * 300);
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        float diff_ms = (now.tv_sec - (*last_heartbeat).tv_sec) * 1000 +
+                    (float)(now.tv_nsec - (*last_heartbeat).tv_nsec) / 1000000;
+        if (diff_ms > TIMEOUTMS) {
+          *i_am_primary = true;
+        }
         continue;
       }
       auto status = BeatHeart();

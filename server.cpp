@@ -17,11 +17,11 @@
 #include "HeartbeatClient.cpp"
 #include "HeartbeatServiceImpl.hpp"
 #include "grpcpp/resource_quota.h"
+#include "macro.h"
 
 using grpc::ServerBuilder;
 
 const std::array<std::string, 2> LAN_ADDR{"server0", "server1"};
-const std::string PORT = "50051";
 
 int main(int argc, char **argv) {
   if (argc != 3) {
@@ -33,21 +33,24 @@ int main(int argc, char **argv) {
   int my_node_number = atoi(argv[1]);
   bool i_am_primary = atoi(argv[2]);
   auto i_am_primary_ptr = std::make_shared<bool>(i_am_primary);
+  struct timespec last_heartbeat;
+  auto last_heartbeat_ptr = std::make_shared<struct timespec>(last_heartbeat);
 
   grpc::ChannelArguments ch_args;
   ch_args.SetMaxReceiveMessageSize(INT_MAX);
   ch_args.SetMaxSendMessageSize(INT_MAX);
 
   auto heartbeat_client = std::make_shared<HeartbeatClient>(
-      grpc::CreateCustomChannel(LAN_ADDR[1 - my_node_number] + ":" + PORT,
+      grpc::CreateCustomChannel(LAN_ADDR[1 - my_node_number] + ":" +
+                                std::to_string(PORT),
                                 grpc::InsecureChannelCredentials(), ch_args),
-      i_am_primary_ptr);
+      i_am_primary_ptr, last_heartbeat_ptr);
 
   BlockStoreServiceImpl blockstore_service(heartbeat_client);
-  HeartbeatServiceImpl heartbeat_service(i_am_primary_ptr);
+  HeartbeatServiceImpl heartbeat_service(i_am_primary_ptr, last_heartbeat_ptr);
 
   grpc::ServerBuilder builder;
-  const std::string server_address = "0.0.0.0:" + PORT;
+  const std::string server_address = "0.0.0.0:" + std::to_string(PORT);
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.SetMaxSendMessageSize(INT_MAX);
   builder.SetMaxReceiveMessageSize(INT_MAX);
