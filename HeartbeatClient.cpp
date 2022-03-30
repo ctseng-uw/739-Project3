@@ -67,7 +67,10 @@ class HeartbeatClient {
     while (true) {
       {
         std::lock_guard<std::mutex> lg(mutex);
-        if (log.empty()) break;
+        if (log.empty()) {
+          is_backup_alive.store(1);
+          break;
+        }
         ent = log.front();
       }
       auto status = RepliWrite(ent.addr, ent.data);
@@ -80,7 +83,6 @@ class HeartbeatClient {
         log.pop();
       }
     }
-    is_backup_alive.store(1);
     puts("Recovery completed");
   }
 
@@ -104,9 +106,9 @@ class HeartbeatClient {
       {
         std::lock_guard<std::mutex> lock(mutex);
         log.push({seq.fetch_add(1), addr, data});
-      }
-      if (is_backup_alive.load() == true) {
-        puts("Backup dead (write)");
+        if (is_backup_alive.load() == true) {
+          puts("Backup dead (write)");
+        }
         is_backup_alive.store(0);
       }
     }
