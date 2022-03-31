@@ -33,7 +33,7 @@ class HeartbeatClient {
   std::mutex mutex;
   std::shared_ptr<ServerState> server_state;
   std::shared_ptr<struct timespec> last_heartbeat;
-  int my_node_number;
+  const int node_num;
 
   auto BeatHeart() {
     hadev::Request request;
@@ -93,38 +93,51 @@ class HeartbeatClient {
     std::cout << MAGIC_RECOVERY_COMPLETE << std::endl;
   }
 
-  void setIAMPrimary() {
-    while (true) {
-      ServerState you_are_primary;
+  void InitStateChange() {
+    while (*server_state == INIT) {
+      ServerState remote_state;
       try {
-        you_are_primary = GetState();
+        remote_state = GetState();
       } catch (RPCFailException e) {
+        std::cerr
+            << "InitStateChange: Fail to connect to another node. Retry\n";
         continue;
       }
-      if (you_are_primary == 0) {
-        if (my_node_number == 0) {
-          *server_state = PRIMARY;
-        } else {
-          *server_state = BACKUP;
-        }
-      } else if (you_are_primary == 1) {
+
+      if (*server_state != INIT) {
+        break;
+      }
+
+      if (remote_state == INIT) { // Should never occur
+        throw std::runtime_error("InitStateChange: unexpected GetState() result");
+        // if (node_num == 0) {
+        //   *server_state = PRIMARY;
+        // } else {
+        //   *server_state = BACKUP;
+        // }
+      } else if (remote_state == BACKUP) {
         *server_state = PRIMARY;
-      } else if (you_are_primary == 2) {
+      } else if (remote_state == PRIMARY) {
         *server_state = BACKUP;
+      } else {
+        throw std::runtime_error("InitStateChange: bad GetState() result");
       }
       break;
     }
+    assert(*server_state != INIT);
+    std::cout << "InitStateChange: state changed to "
+              << (*server_state == PRIMARY ? "PRIMARY" : "BACKUP") << "\n";
   }
 
  public:
   HeartbeatClient(const std::shared_ptr<grpc::ChannelInterface>& channel,
                   std::shared_ptr<ServerState> server_state,
                   std::shared_ptr<struct timespec> last_heartbeat,
-                  int my_node_number)
+                  int node_num)
       : stub_(hadev::Heartbeat::NewStub(channel)),
         server_state(server_state),
         last_heartbeat(last_heartbeat),
-        my_node_number(my_node_number) {
+        node_num(node_num) {
     is_backup_alive.store(0);
     seq.store(0);
   };
@@ -150,11 +163,14 @@ class HeartbeatClient {
   }
 
   void Start() {
-    setIAMPrimary();
+    // Solve INIT
+    InitStateChange();
+
+    // Condition variable: send heartbeat only when state==PRIMARY
     clock_gettime(CLOCK_MONOTONIC, &*last_heartbeat);
     while (true) {
-      // TODO:
-      if (*server_state == 1) {
+      // TODO: change
+      if (*server_state == BACKUP) {
         usleep(TIMEOUTMS * 300);
         struct timespec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
@@ -180,4 +196,6 @@ class HeartbeatClient {
       }
     }
   }
+
+  void TimeoutCheck() {}
 };

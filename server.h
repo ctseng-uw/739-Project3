@@ -31,7 +31,11 @@
  *
  * - ServerState::PRIMARY
  *   - (BlockStoreService) Do the logic.
- *   - (HeartbeatService) receive GetState(): return PRIMARY
+ *   - (HeartbeatService) 
+ *     - receive GetState(): return PRIMARY
+ *     - receive RepliWrite(): this could happen when network failure:
+ *       - change state to INIT
+ *       - reply grpc::status (ABORTED)
  *   - (HeartbeatClient) Do the logic.
  */
 
