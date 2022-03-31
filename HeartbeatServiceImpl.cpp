@@ -3,11 +3,13 @@
 #include <fcntl.h>
 
 #include "macro.h"
+#include "server.h"
 #define DEVICE "./fake_device.bin"
 
-HeartbeatServiceImpl::HeartbeatServiceImpl(std::shared_ptr<int> i_am_primary,
-                                std::shared_ptr<struct timespec> last_heartbeat)
-    : i_am_primary(i_am_primary), last_heartbeat(last_heartbeat) {
+HeartbeatServiceImpl::HeartbeatServiceImpl(
+    std::shared_ptr<ServerState> server_state,
+    std::shared_ptr<struct timespec> last_heartbeat)
+    : server_state(server_state), last_heartbeat(last_heartbeat) {
   fd = open(DEVICE, O_CREAT | O_RDWR, 0644);
   assert(fd >= 0);
   clock_gettime(CLOCK_MONOTONIC, &*last_heartbeat);
@@ -29,9 +31,9 @@ grpc::Status HeartbeatServiceImpl::RepliWrite(grpc::ServerContext *context,
   return grpc::Status::OK;
 }
 
-grpc::Status HeartbeatServiceImpl::is_primary(grpc::ServerContext *context,
-                                              const hadev::Blank *req,
-                                              hadev::ReplyState *reply) {
-  reply->set_state(*i_am_primary);
+grpc::Status HeartbeatServiceImpl::GetState(grpc::ServerContext *context,
+                                            const hadev::Blank *req,
+                                            hadev::State *reply) {
+  reply->set_state(*server_state);
   return grpc::Status::OK;
 }

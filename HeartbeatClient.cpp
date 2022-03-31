@@ -1,11 +1,13 @@
 #pragma once
+#include <time.h>
+
 #include <exception>
 #include <queue>
 
-#include <time.h>
-
 #include "includes/heartbeat.grpc.pb.h"
 #include "includes/heartbeat.pb.h"
+#include "server.h"
+
 const uint32_t TIMEOUTMS = 10;
 
 class RPCFailException : public std::runtime_error {
@@ -29,7 +31,7 @@ class HeartbeatClient {
   std::atomic<uint64_t> seq;
   std::queue<LogEnt> log;
   std::mutex mutex;
-  std::shared_ptr<int> i_am_primary;
+  std::shared_ptr<ServerState> server_state;
   std::shared_ptr<struct timespec> last_heartbeat;
   int my_node_number;
 
@@ -42,16 +44,17 @@ class HeartbeatClient {
     return status;
   }
 
-  int is_primary() {
-    hadev::Blank request;
+  ServerState GetState() {
+    hadev::State request;
     grpc::ClientContext context;
-    hadev::ReplyState reply;
-    auto status = stub_->is_primary(&context, request, &reply);
+    hadev::State reply;
+    request.set_state(static_cast<int32_t>(*server_state));
+    auto status = stub_->GetState(&context, request, &reply);
     if (!status.ok()) {
       throw RPCFailException(status);
       // throw std::exception();
     }
-    return reply.state();
+    return static_cast<ServerState>(reply.state());
   }
 
   grpc::Status RepliWrite(int64_t addr, const std::string& data) {
@@ -91,26 +94,22 @@ class HeartbeatClient {
 
   void setIAMPrimary() {
     while (true) {
-      int you_are_primary;
+      ServerState you_are_primary;
       try {
-        you_are_primary = is_primary();
-      }
-      catch (RPCFailException e) {
+        you_are_primary = GetState();
+      } catch (RPCFailException e) {
         continue;
       }
       if (you_are_primary == 0) {
         if (my_node_number == 0) {
-          *i_am_primary = 2;
+          *server_state = PRIMARY;
+        } else {
+          *server_state = BACKUP;
         }
-        else {
-          *i_am_primary = 1;
-        }
-      }
-      else if (you_are_primary == 1) {
-        *i_am_primary = 2;
-      }
-      else if (you_are_primary == 2) {
-        *i_am_primary = 1;
+      } else if (you_are_primary == 1) {
+        *server_state = PRIMARY;
+      } else if (you_are_primary == 2) {
+        *server_state = BACKUP;
       }
       break;
     }
@@ -118,11 +117,13 @@ class HeartbeatClient {
 
  public:
   HeartbeatClient(const std::shared_ptr<grpc::ChannelInterface>& channel,
-                  std::shared_ptr<int> i_am_primary,
+                  std::shared_ptr<ServerState> server_state,
                   std::shared_ptr<struct timespec> last_heartbeat,
                   int my_node_number)
-      : stub_(hadev::Heartbeat::NewStub(channel)), i_am_primary(i_am_primary),
-        last_heartbeat(last_heartbeat), my_node_number(my_node_number) {
+      : stub_(hadev::Heartbeat::NewStub(channel)),
+        server_state(server_state),
+        last_heartbeat(last_heartbeat),
+        my_node_number(my_node_number) {
     is_backup_alive.store(0);
     seq.store(0);
   };
@@ -152,14 +153,15 @@ class HeartbeatClient {
     clock_gettime(CLOCK_MONOTONIC, &*last_heartbeat);
     while (true) {
       // TODO:
-      if (*i_am_primary == 1) {
+      if (*server_state == 1) {
         usleep(TIMEOUTMS * 300);
         struct timespec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
-        float diff_ms = (now.tv_sec - (*last_heartbeat).tv_sec) * 1000 +
-                    (float)(now.tv_nsec - (*last_heartbeat).tv_nsec) / 1000000;
+        float diff_ms =
+            (now.tv_sec - (*last_heartbeat).tv_sec) * 1000 +
+            (float)(now.tv_nsec - (*last_heartbeat).tv_nsec) / 1000000;
         if (diff_ms > TIMEOUTMS) {
-          *i_am_primary = 2;
+          *server_state = PRIMARY;
         }
         continue;
       }

@@ -13,11 +13,11 @@ message Reply {
 
 message Blank {}
 
-message ReplyState {
+message State {
   int32 state = 1;
 }
 
 service Heartbeat {
-  rpc is_primary (Blank) returns (ReplyState) {}
+  rpc GetState (State) returns (State) {}
   rpc RepliWrite (Request) returns (Reply) {}
 }
