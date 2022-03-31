@@ -4,7 +4,6 @@
 
 #include "macro.h"
 #include "server.h"
-#define DEVICE "./fake_device.bin"
 
 HeartbeatServiceImpl::HeartbeatServiceImpl(
     std::shared_ptr<ServerState> server_state,

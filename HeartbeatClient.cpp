@@ -6,8 +6,8 @@
 
 #include "includes/heartbeat.grpc.pb.h"
 #include "includes/heartbeat.pb.h"
+#include "magic.h"
 #include "server.h"
-
 const uint32_t TIMEOUTMS = 10;
 
 class RPCFailException : public std::runtime_error {
@@ -89,7 +89,8 @@ class HeartbeatClient {
         log.pop();
       }
     }
-    puts("Recovery completed");
+
+    std::cout << MAGIC_RECOVERY_COMPLETE << std::endl;
   }
 
   void setIAMPrimary() {

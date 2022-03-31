@@ -18,7 +18,7 @@ class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
       std::shared_ptr<ServerState> server_state,
       std::shared_ptr<HeartbeatClient> heartbeat_client)
       : server_state(server_state), heartbeat_client(heartbeat_client) {
-    fd = open("server_device.bin", O_CREAT | O_RDWR, 0644);
+    fd = open(DEVICE, O_CREAT | O_RDWR, 0644);
     CHK(fd);
   };
 
@@ -30,7 +30,7 @@ class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
 
   Status Write(ServerContext *context, const hadev::WriteRequest *req,
                hadev::WriteReply *reply) {
-        // Accept client requests only when status == PRIMARY
+    // Accept client requests only when status == PRIMARY
     if (*server_state != PRIMARY) {
       std::string state = (*server_state == INIT ? "INIT" : "BACKUP");
       return Status(StatusCode::FAILED_PRECONDITION,

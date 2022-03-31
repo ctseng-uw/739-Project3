@@ -18,6 +18,7 @@
 #include "HeartbeatServiceImpl.hpp"
 #include "grpcpp/resource_quota.h"
 #include "macro.h"
+#include "magic.h"
 
 using grpc::ServerBuilder;
 
@@ -92,6 +93,7 @@ int main(int argc, char **argv) {
   builder.RegisterService(&blockstore_service);
   builder.RegisterService(&heartbeat_service);
   std::cout << "Server listening on " << server_address << std::endl;
+  std::cout << MAGIC_SERVER_START << std::endl;
   auto server = builder.BuildAndStart();
 
   heartbeat_client->Start();
