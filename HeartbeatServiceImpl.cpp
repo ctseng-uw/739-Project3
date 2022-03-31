@@ -3,7 +3,6 @@
 #include <fcntl.h>
 
 #include "macro.h"
-#define DEVICE "./fake_device.bin"
 
 HeartbeatServiceImpl::HeartbeatServiceImpl(std::shared_ptr<bool> i_am_primary)
     : i_am_primary(i_am_primary) {

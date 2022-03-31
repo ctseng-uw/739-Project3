@@ -17,10 +17,11 @@
 #include "HeartbeatClient.cpp"
 #include "HeartbeatServiceImpl.hpp"
 #include "grpcpp/resource_quota.h"
+#include "magic.h"
 
 using grpc::ServerBuilder;
 
-const std::array<std::string, 2> LAN_ADDR{"server0", "server1"};
+const std::array<std::string, 2> LAN_ADDR{"node0", "node1"};
 const std::string PORT = "50051";
 
 int main(int argc, char **argv) {
@@ -55,6 +56,7 @@ int main(int argc, char **argv) {
   builder.RegisterService(&blockstore_service);
   builder.RegisterService(&heartbeat_service);
   std::cout << "Server listening on " << server_address << std::endl;
+  std::cout << MAGIC_SERVER_START << std::endl;
   auto server = builder.BuildAndStart();
 
   heartbeat_client->Start();

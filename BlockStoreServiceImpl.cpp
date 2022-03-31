@@ -16,7 +16,7 @@ class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
   explicit BlockStoreServiceImpl(
       std::shared_ptr<HeartbeatClient> heartbeat_client)
       : heartbeat_client(heartbeat_client) {
-    fd = open("server_device.bin", O_CREAT | O_RDWR, 0644);
+    fd = open(DEVICE, O_CREAT | O_RDWR, 0644);
     CHK(fd);
   };
 
