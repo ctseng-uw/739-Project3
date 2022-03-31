@@ -15,9 +15,9 @@ using grpc::StatusCode;
 class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
  public:
   explicit BlockStoreServiceImpl(
-      std::shared_ptr<ServerState> server_state,
+      std::shared_ptr<ServerState> server_state_ptr,
       std::shared_ptr<HeartbeatClient> heartbeat_client)
-      : server_state(server_state), heartbeat_client(heartbeat_client) {
+      : server_state_ptr(server_state_ptr), heartbeat_client(heartbeat_client) {
     fd = open(DEVICE, O_CREAT | O_RDWR, 0644);
     CHK(fd);
   };
@@ -26,15 +26,16 @@ class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
   int fd;
   std::mutex mutex;
   std::shared_ptr<HeartbeatClient> heartbeat_client;
-  std::shared_ptr<ServerState> server_state;
+  std::shared_ptr<ServerState> server_state_ptr;
 
   Status Write(ServerContext *context, const hadev::WriteRequest *req,
                hadev::WriteReply *reply) {
     // Accept client requests only when status == PRIMARY
-    if (*server_state != PRIMARY) {
-      std::string state = (*server_state == INIT ? "INIT" : "BACKUP");
+    ServerState state = *server_state_ptr;
+    if (state != PRIMARY) {
+      std::string state_str = (state == INIT ? "INIT" : "BACKUP");
       return Status(StatusCode::FAILED_PRECONDITION,
-                    "Request rejected: I am " + state);
+                    "Request rejected: I am " + state_str);
     }
 
     assert(req->data().length() == BLOCK_SIZE);
@@ -52,10 +53,11 @@ class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
   Status Read(ServerContext *context, const hadev::ReadRequest *req,
               hadev::ReadReply *reply) {
     // Accept client requests only when status == PRIMARY
-    if (*server_state != PRIMARY) {
-      std::string state = (*server_state == INIT ? "INIT" : "BACKUP");
+    ServerState state = *server_state_ptr;
+    if (state != PRIMARY) {
+      std::string state_str = (state == INIT ? "INIT" : "BACKUP");
       return Status(StatusCode::FAILED_PRECONDITION,
-                    "Request rejected: I am " + state);
+                    "Request rejected: I am " + state_str);
     }
 
     lseek(fd, req->addr(), SEEK_SET);

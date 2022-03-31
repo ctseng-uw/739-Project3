@@ -22,7 +22,7 @@
 
 using grpc::ServerBuilder;
 
-const std::array<std::string, 2> LAN_ADDR{"node0", "node1"};
+const std::array<std::string, 2> LAN_ADDR{"10.10.1.1", "10.10.1.2"};
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -31,8 +31,7 @@ int main(int argc, char **argv) {
   }
 
   int node_num = atoi(argv[1]);
-  std::shared_ptr<ServerState> server_state =
-      std::make_shared<ServerState>(ServerState::INIT);
+  auto server_state_ptr = std::make_shared<ServerState>(ServerState::INIT);
   std::shared_ptr<timespec> last_heartbeat =
       std::make_shared<struct timespec>();
 
@@ -44,10 +43,11 @@ int main(int argc, char **argv) {
       grpc::CreateCustomChannel(
           LAN_ADDR[1 - node_num] + ":" + std::to_string(PORT),
           grpc::InsecureChannelCredentials(), ch_args),
-      server_state, last_heartbeat, node_num);
+      server_state_ptr, last_heartbeat, node_num);
 
-  BlockStoreServiceImpl blockstore_service(server_state, heartbeat_client);
-  HeartbeatServiceImpl heartbeat_service(server_state, last_heartbeat, node_num);
+  BlockStoreServiceImpl blockstore_service(server_state_ptr, heartbeat_client);
+  HeartbeatServiceImpl heartbeat_service(server_state_ptr, last_heartbeat,
+                                         node_num);
 
   grpc::ServerBuilder builder;
   const std::string server_address = "0.0.0.0:" + std::to_string(PORT);

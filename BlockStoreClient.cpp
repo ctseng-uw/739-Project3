@@ -18,7 +18,7 @@ using grpc::ClientContext;
 
 class BlockStoreClient {
  public:
-  BlockStoreClient(std::string server_name = "node1") {
+  BlockStoreClient(std::string server_name = "node0") {
     grpc::ChannelArguments ch_args;
 
     ch_args.SetMaxReceiveMessageSize(INT_MAX);

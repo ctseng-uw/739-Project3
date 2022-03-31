@@ -6,9 +6,9 @@
 #include "server.h"
 
 HeartbeatServiceImpl::HeartbeatServiceImpl(
-    std::shared_ptr<ServerState> server_state,
+    std::shared_ptr<ServerState> server_state_ptr,
     std::shared_ptr<struct timespec> last_heartbeat, int node_num)
-    : server_state(server_state),
+    : server_state_ptr(server_state_ptr),
       last_heartbeat(last_heartbeat),
       node_num(node_num) {
   fd = open(DEVICE, O_CREAT | O_RDWR, 0644);
@@ -19,13 +19,19 @@ HeartbeatServiceImpl::HeartbeatServiceImpl(
 grpc::Status HeartbeatServiceImpl::RepliWrite(grpc::ServerContext *context,
                                               const hadev::Request *req,
                                               hadev::Reply *reply) {
-  switch (*server_state) {
+  ServerState state = *server_state_ptr;
+  switch (state) {
     case INIT:
       // this should be a heartbeat, not a real write request
       assert(!req->has_addr() && !req->has_data());
-      *server_state = BACKUP;
-      // HeartbeatClint::Start() will figure out server_state immediately.
-      break;
+      puts("HBServer: INIT to BACKUP");
+      *server_state_ptr = BACKUP;
+      // HeartbeatClint::Start() will figure out server_state_ptr immediately.
+      std::cout << "HeartbeatServiceImpl: turned to BACKUP\n";
+      clock_gettime(CLOCK_MONOTONIC, &*last_heartbeat);
+
+      reply->set_yeah(true);
+      return grpc::Status::OK;
     case BACKUP:
       // Normal case: refresh timeout and optionally write data
       if (req->has_data() && req->has_addr()) {
@@ -39,38 +45,41 @@ grpc::Status HeartbeatServiceImpl::RepliWrite(grpc::ServerContext *context,
 
       reply->set_yeah(true);
       return grpc::Status::OK;
-      break;
     case PRIMARY:
       // Happens when both nodes think they are PRIMARY.
-      std::cout << "HeartbeatServiceImpl: network failed. both nodes think "
-                   "they're PRIMARY\n";
-      *server_state = INIT;
+      puts("HeartbeatServiceImpl: both nodes think they're PRIMARY");
+      puts("HBServer: PRIMARY to INIT");
+      *server_state_ptr = INIT;
       // throw std::runtime_error(
-          // "HeartbeatServiceImpl: receive RepliWrite when state==PRIMARY");
-      return grpc::Status(grpc::StatusCode::ABORTED, "Both of us think we are PRIMARY. Switched to INIT");
-      break;
+      // "HeartbeatServiceImpl: receive RepliWrite when state==PRIMARY");
+      return grpc::Status(grpc::StatusCode::ABORTED,
+                          "Both of us think we are PRIMARY. Switched to INIT");
   }
-
 }
 
 grpc::Status HeartbeatServiceImpl::GetState(grpc::ServerContext *context,
-                                            const hadev::Blank *req,
+                                            const hadev::State *req,
                                             hadev::State *reply) {
-  bool state_changed = true;
-  switch (*server_state) {
+  std::cout << "server: GetState is called\n";
+  switch (*server_state_ptr) {
     case INIT:
-      *server_state = (node_num ? BACKUP : PRIMARY);
-      // HeartbeatClint::Start() will figure out server_state immediately.
+      if (node_num)
+        puts("HBService::GetState: INIT to BACKUP");
+      else
+        puts("HBService::GetState: INIT to PRIMARY");
+
+      *server_state_ptr = (node_num ? BACKUP : PRIMARY);
+      // HeartbeatClint::Start() will figure out server_state_ptr immediately.
       break;
     case BACKUP:
-      *server_state = PRIMARY;
+      puts("HBService::GetState: BACKUP to PRIMARY");
+      *server_state_ptr = PRIMARY;
       // TODO: wakeup HeartbeatClient and make timeout countdown thread sleep.
       break;
     case PRIMARY:
-      state_changed = false;
       break;
   }
 
-  reply->set_state(*server_state);
+  reply->set_state(*server_state_ptr);
   return grpc::Status::OK;
 }

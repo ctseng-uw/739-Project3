@@ -31,7 +31,7 @@ class HeartbeatClient {
   std::atomic<uint64_t> seq;
   std::queue<LogEnt> log;
   std::mutex mutex;
-  std::shared_ptr<ServerState> server_state;
+  std::shared_ptr<ServerState> server_state_ptr;
   std::shared_ptr<struct timespec> last_heartbeat;
   const int node_num;
 
@@ -40,7 +40,9 @@ class HeartbeatClient {
     grpc::ClientContext context;
     hadev::Reply reply;
 
+    // puts("HBClient: (PRIMARY) send heartbeat");
     grpc::Status status = stub_->RepliWrite(&context, request, &reply);
+    // puts("HBClient: (PRIMARY) heartbeat reply rcvd");
     return status;
   }
 
@@ -48,7 +50,7 @@ class HeartbeatClient {
     hadev::State request;
     grpc::ClientContext context;
     hadev::State reply;
-    request.set_state(static_cast<int32_t>(*server_state));
+    request.set_state(static_cast<int32_t>(*server_state_ptr));
     auto status = stub_->GetState(&context, request, &reply);
     if (!status.ok()) {
       throw RPCFailException(status);
@@ -94,48 +96,47 @@ class HeartbeatClient {
   }
 
   void InitStateChange() {
-    while (*server_state == INIT) {
+    while (*server_state_ptr == INIT) {
       ServerState remote_state;
       try {
         remote_state = GetState();
       } catch (RPCFailException e) {
-        std::cerr
-            << "InitStateChange: Fail to connect to another node. Retry\n";
+        // std::cerr
+        //     << "InitStateChange: Fail to connect to another node. Retry\n";
         continue;
       }
 
-      if (*server_state != INIT) {
-        break;
-      }
-
-      if (remote_state == INIT) { // Should never occur
-        throw std::runtime_error("InitStateChange: unexpected GetState() result");
+      if (remote_state == INIT) {  // Should never occur
+        throw std::runtime_error(
+            "InitStateChange: unexpected GetState() result");
         // if (node_num == 0) {
-        //   *server_state = PRIMARY;
+        //   *server_state_ptr = PRIMARY;
         // } else {
-        //   *server_state = BACKUP;
+        //   *server_state_ptr = BACKUP;
         // }
       } else if (remote_state == BACKUP) {
-        *server_state = PRIMARY;
+        puts("HBClient::InitStateChange(): INIT to PRIMARY");
+        *server_state_ptr = PRIMARY;
       } else if (remote_state == PRIMARY) {
-        *server_state = BACKUP;
+        puts("HBClient::InitStateChange(): INIT to BACKUP");
+        *server_state_ptr = BACKUP;
       } else {
         throw std::runtime_error("InitStateChange: bad GetState() result");
       }
       break;
     }
-    assert(*server_state != INIT);
-    std::cout << "InitStateChange: state changed to "
-              << (*server_state == PRIMARY ? "PRIMARY" : "BACKUP") << "\n";
+    assert(*server_state_ptr != INIT);
+    // std::cout << "InitStateChange: state changed to "
+    //           << (*server_state_ptr == PRIMARY ? "PRIMARY" : "BACKUP") <<
+    //           "\n";
   }
 
  public:
   HeartbeatClient(const std::shared_ptr<grpc::ChannelInterface>& channel,
-                  std::shared_ptr<ServerState> server_state,
-                  std::shared_ptr<struct timespec> last_heartbeat,
-                  int node_num)
+                  std::shared_ptr<ServerState> server_state_ptr,
+                  std::shared_ptr<struct timespec> last_heartbeat, int node_num)
       : stub_(hadev::Heartbeat::NewStub(channel)),
-        server_state(server_state),
+        server_state_ptr(server_state_ptr),
         last_heartbeat(last_heartbeat),
         node_num(node_num) {
     is_backup_alive.store(0);
@@ -169,30 +170,38 @@ class HeartbeatClient {
     // Condition variable: send heartbeat only when state==PRIMARY
     clock_gettime(CLOCK_MONOTONIC, &*last_heartbeat);
     while (true) {
-      // TODO: change
-      if (*server_state == BACKUP) {
-        usleep(TIMEOUTMS * 300);
+      if (*server_state_ptr == INIT) {
+        InitStateChange();
+      } else if (*server_state_ptr == BACKUP) {
+        // Timeout counter
+        usleep(TIMEOUTMS * 1000);
         struct timespec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
-        float diff_ms =
-            (now.tv_sec - (*last_heartbeat).tv_sec) * 1000 +
-            (float)(now.tv_nsec - (*last_heartbeat).tv_nsec) / 1000000;
-        if (diff_ms > TIMEOUTMS) {
-          *server_state = PRIMARY;
+        uint32_t diff_us = (now.tv_sec - (*last_heartbeat).tv_sec) * 1000000 +
+                           (now.tv_nsec - (*last_heartbeat).tv_nsec) / 1000;
+        if (diff_us > TIMEOUTMS * 1000) {
+          puts("HBClient: timeout. BACKUP to PRIMARY");
+          *server_state_ptr = PRIMARY;
         }
-        continue;
-      }
-      auto status = BeatHeart();
-      if (status.ok()) {
-        if (is_backup_alive.load() == false) {
-          RunRecovery();
+      } else if (*server_state_ptr == PRIMARY) {
+        auto status = BeatHeart();
+        if (status.ok()) {
+          if (is_backup_alive.load() == false) {
+            puts("Backup turned alive (heartbeat)");
+            RunRecovery();
+          }
+          // } else if (status.error_code() == grpc::StatusCode::ABORTED) {
+          // puts("HBClient::Start: PRIMARY to INIT");
+          // *server_state_ptr = INIT;
+        } else {  // status is not OK
+          if (is_backup_alive.load() == true) {
+            puts("Backup turned dead (heartbeat)");
+            is_backup_alive.store(0);
+          }
         }
         usleep(TIMEOUTMS * 300);
       } else {
-        if (is_backup_alive.load() == true) {
-          puts("Backup dead (heartbeat)");
-          is_backup_alive.store(0);
-        }
+        assert(false);
       }
     }
   }
