@@ -3,10 +3,9 @@ from .utils import *
 from .fixtures import *
 
 
-async def test_hello_fuse(servers: List[Server], clients: List[Client]):
-    await servers[0].start_server()
-    await servers[1].start_server()
-    await servers[0].recovery_complete()
+async def test_hello_fuse(
+    servers: List[Server], clients: List[Client], setup_two_servers: None
+):
     await clients[0].run("mkdir -p /tmp/go")
     await clients[0].run("/tmp/mfsfuse -s /tmp/go")
     await clients[0].run("echo -n 'hello world' > /tmp/hello.txt")
@@ -16,7 +15,9 @@ async def test_hello_fuse(servers: List[Server], clients: List[Client]):
     assert await servers[0].get_device_digest() == await servers[1].get_device_digest()
 
 
-async def test_sqlite(servers: List[Server], clients: List[Client]):
+async def test_sqlite(
+    servers: List[Server], clients: List[Client], setup_two_servers: None
+):
     sqlcmd = """
         CREATE TABLE coffees (
         id INTEGER PRIMARY KEY,
@@ -30,9 +31,6 @@ async def test_sqlite(servers: List[Server], clients: List[Client]):
         INSERT INTO coffees VALUES (null, 'Colombian_Decaf', 8.99);
         INSERT INTO coffees VALUES (null, 'French_Roast_Decaf', 9.99);
     """
-    await servers[0].start_server()
-    await servers[1].start_server()
-    await servers[0].recovery_complete()
     await clients[0].run("mkdir -p /tmp/go")
     await clients[0].run("/tmp/mfsfuse -s /tmp/go")
     await clients[0].run("sqlite /tmp/go/test.sql", sqlcmd)

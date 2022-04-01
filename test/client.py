@@ -6,13 +6,13 @@ class Client:
     def __init__(self, conn: asyncssh.SSHClientConnection):
         self.conn = conn
 
-    async def write(self, addr: int, data: str):
+    async def write(self, target: int, addr: int, data: str):
         logging.info(f"Client write at {addr}")
-        await self.conn.run(f"/tmp/client w {addr} {data}", check=True)
+        await self.conn.run(f"/tmp/client {target} w {addr} {data}", check=True)
 
-    async def read(self, addr: int):
+    async def read(self, target: int, addr: int):
         logging.info(f"Client read at {addr}")
-        client_proc = await self.conn.run(f"/tmp/client r {addr}", check=True)
+        client_proc = await self.conn.run(f"/tmp/client {target}  r {addr}", check=True)
         return client_proc.stdout
 
     def run(self, cmd: str, input: str = None):

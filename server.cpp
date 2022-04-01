@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
     } else {
       watcher->BlockUntilHeartbeatTimeout();
       *i_am_primary_ptr = true;
-      puts("BACKUP to PRIMARY");
+      std::cout << MAGIC_BECOMES_PRIMARY << std::endl;
     }
   }
 

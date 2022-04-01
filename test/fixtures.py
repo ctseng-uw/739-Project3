@@ -1,9 +1,7 @@
-import logging
 from .client import Client
 from .server import Server
 import asyncssh
 import pytest
-import asyncio
 from typing import List
 from .conftest import server_addrs, client_addrs
 
@@ -28,3 +26,11 @@ async def servers():
     yield ret
     for s in ret:
         await s.close()
+
+
+@pytest.fixture
+async def setup_two_servers(servers: List[Server]):
+    [primary, backup] = servers
+    await primary.start_as_primary()
+    await backup.start_as_backup()
+    await primary.recovery_complete()
