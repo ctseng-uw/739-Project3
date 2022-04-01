@@ -1,7 +1,6 @@
 from typing import List
 
 from .utils import *
-from .fixtures import *
 from .client import Client
 from .server import Server
 

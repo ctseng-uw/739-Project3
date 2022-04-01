@@ -2,18 +2,20 @@ import pytest
 import asyncssh
 import asyncio
 import logging
+from typing import List
+from .client import Client
+from .server import Server
 
 server_addrs = ["node0", "node1"]
 client_addrs = ["node2", "node3"]
+
 
 @pytest.fixture(scope="session", autouse=True)
 async def compile():
     asyncssh.set_log_level(100)
 
     async def run_in_build(cmd):
-        proc = await asyncio.create_subprocess_shell(
-            cmd, cwd="../build"
-        )
+        proc = await asyncio.create_subprocess_shell(cmd, cwd="../build")
         await proc.communicate()
         assert proc.returncode == 0
 
@@ -40,4 +42,31 @@ def event_loop():
     return asyncio.get_event_loop()
 
 
+@pytest.fixture
+async def clients():
+    ret = []
+    for node in client_addrs:
+        conn = await asyncssh.connect(node)
+        ret.append(Client(conn))
+    yield ret
+    for c in ret:
+        await c.close()
 
+
+@pytest.fixture
+async def servers():
+    ret = []
+    for idx, node in enumerate(server_addrs):
+        conn = await asyncssh.connect(node)
+        ret.append(Server(conn, idx))
+    yield ret
+    for s in ret:
+        await s.close()
+
+
+@pytest.fixture
+async def setup_two_servers(servers: List[Server]):
+    [primary, backup] = servers
+    await primary.start_as_primary()
+    await backup.start_as_backup()
+    await primary.recovery_complete()

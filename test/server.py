@@ -1,7 +1,7 @@
 from typing import Optional
 import asyncssh
 import logging
-from .utils import *
+from .utils import MAGIC
 
 
 class Server:
