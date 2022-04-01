@@ -34,8 +34,7 @@ int main(int argc, char **argv) {
 
   int my_node_number = atoi(argv[1]);
   // TODO: ugly
-  // bool i_am_primary = atoi(argv[2]);
-  auto i_am_primary_ptr = std::make_shared<bool>(atoi(argv[2]));
+  auto i_am_primary = std::make_shared<bool>(atoi(argv[2]));
 
   auto watcher = std::make_shared<TimeoutWatcher>();
 
@@ -46,10 +45,10 @@ int main(int argc, char **argv) {
   auto heartbeat_client = std::make_shared<HeartbeatClient>(
       grpc::CreateCustomChannel(LAN_ADDR[1 - my_node_number] + ":" + PORT,
                                 grpc::InsecureChannelCredentials(), ch_args),
-      i_am_primary_ptr);
+      i_am_primary);
 
-  BlockStoreServiceImpl blockstore_service(heartbeat_client);
-  HeartbeatServiceImpl heartbeat_service(i_am_primary_ptr, watcher);
+  BlockStoreServiceImpl blockstore_service(i_am_primary, heartbeat_client);
+  HeartbeatServiceImpl heartbeat_service(i_am_primary, watcher, my_node_number);
 
   grpc::ServerBuilder builder;
   const std::string server_address = "0.0.0.0:" + PORT;
@@ -63,21 +62,21 @@ int main(int argc, char **argv) {
   std::cout << MAGIC_SERVER_START << std::endl;
   auto server = builder.BuildAndStart();
 
-  if (*i_am_primary_ptr)
+  if (*i_am_primary)
     puts("Start as PRIMARY");
   else
     puts("Start as BACKUP");
   while (true) {
-    if (*i_am_primary_ptr) {
-      puts("Calling LoopUntilConflict");
-      heartbeat_client->LoopUntilConflict();
+    if (*i_am_primary) {
+      heartbeat_client->LoopForever();
+      puts("Error: Exit LoopForever");
       if (my_node_number == 1) {
         puts("PRIMARY to BACKUP");
-        *i_am_primary_ptr = false;
+        *i_am_primary = false;
       }
     } else {
       watcher->BlockUntilHeartbeatTimeout();
-      *i_am_primary_ptr = true;
+      *i_am_primary = true;
       std::cout << MAGIC_BECOMES_PRIMARY << std::endl;
     }
   }

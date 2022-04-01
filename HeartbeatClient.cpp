@@ -48,7 +48,8 @@ class HeartbeatClient {
     return status;
   }
 
-  grpc::Status RepliWrite(int64_t addr, const std::string& data) {
+  // Return value: 0=OK 1=other_side_is_primary 2=timeout
+  int RepliWrite(int64_t addr, const std::string& data) {
     puts("Call Write");
 
     hadev::Request request;
@@ -57,7 +58,11 @@ class HeartbeatClient {
     request.set_addr(addr);
     request.set_data(data);
     grpc::Status status = stub_->RepliWrite(&context, request, &reply);
-    return status;
+    if (!status.ok())
+      return 2;
+    else if (reply.i_am_primary())
+      return 1;
+    return 0;
   };
 
   void RunRecovery() {
@@ -72,8 +77,9 @@ class HeartbeatClient {
         }
         ent = log.front();
       }
-      auto status = RepliWrite(ent.addr, ent.data);
-      if (!status.ok()) {
+      int rc = RepliWrite(ent.addr, ent.data);
+      assert(rc != 1);  // It cannot think it is primary!
+      if (rc == 2) {
         puts("Backup dead while recovering");
         break;
       }
@@ -94,14 +100,18 @@ class HeartbeatClient {
     seq.store(0);
   };
 
-  void Write(int64_t addr, const std::string& data) {
-    bool ok = false;
+  // Return: True==Write success (to remote or log).
+  //         False==Remote is primary. Did not write.
+  bool Write(int64_t addr, const std::string& data) {
+    int rc = 2;  // 0=OK 1=other_side_is_primary 2=timeout
     if (is_backup_alive.load()) {
       puts("Write to backup");
-      auto status = RepliWrite(addr, data);
-      if (status.ok()) ok = true;
+      rc = RepliWrite(addr, data);
     }
-    if (!ok) {
+
+    if (rc == 1) {
+      return false;
+    } else if (rc == 2) {
       puts("Write to log");
       {
         std::lock_guard<std::mutex> lock(mutex);
@@ -112,10 +122,11 @@ class HeartbeatClient {
         is_backup_alive.store(0);
       }
     }
+    return true;
   }
 
-  void LoopUntilConflict() {
-    puts("LoopUntilConflict");
+  void LoopForever() {
+    puts("LoopForever");
     while (true) {
       auto status = BeatHeart();
       if (status.ok()) {
