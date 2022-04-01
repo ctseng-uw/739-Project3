@@ -16,6 +16,7 @@
 #include "BlockStoreServiceImpl.cpp"
 #include "HeartbeatClient.cpp"
 #include "HeartbeatServiceImpl.hpp"
+#include "TimeoutWatcher.cpp"
 #include "grpcpp/resource_quota.h"
 #include "magic.h"
 
@@ -32,8 +33,11 @@ int main(int argc, char **argv) {
   }
 
   int my_node_number = atoi(argv[1]);
+  // TODO: ugly
   bool i_am_primary = atoi(argv[2]);
   auto i_am_primary_ptr = std::make_shared<bool>(i_am_primary);
+
+  auto watcher = std::make_shared<TimeoutWatcher>();
 
   grpc::ChannelArguments ch_args;
   ch_args.SetMaxReceiveMessageSize(INT_MAX);
@@ -45,7 +49,7 @@ int main(int argc, char **argv) {
       i_am_primary_ptr);
 
   BlockStoreServiceImpl blockstore_service(heartbeat_client);
-  HeartbeatServiceImpl heartbeat_service(i_am_primary_ptr);
+  HeartbeatServiceImpl heartbeat_service(i_am_primary_ptr, watcher);
 
   grpc::ServerBuilder builder;
   const std::string server_address = "0.0.0.0:" + PORT;
@@ -59,7 +63,14 @@ int main(int argc, char **argv) {
   std::cout << MAGIC_SERVER_START << std::endl;
   auto server = builder.BuildAndStart();
 
-  heartbeat_client->Start();
+  while (true) {
+    if (i_am_primary) {
+      heartbeat_client->LoopUntilNotPrimary();
+    } else {
+      watcher->BlockUntilHeartbeatTimeout();
+      puts("time out");
+    }
+  }
 
   return 0;
 }

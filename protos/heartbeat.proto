@@ -8,12 +8,9 @@ message Request {
 }
 
 message Reply {
-  bool yeah = 1;
+  bool i_am_primary = 1;
 }
 
-message Blank {}
-
 service Heartbeat {
-  rpc is_primary (Blank) returns (Reply) {}
   rpc RepliWrite (Request) returns (Reply) {}
 }

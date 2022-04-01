@@ -39,19 +39,6 @@ class HeartbeatClient {
     return status;
   }
 
-  // TODO: Remove this? Use this?
-  bool is_primary() {
-    hadev::Blank request;
-    grpc::ClientContext context;
-    hadev::Reply reply;
-    auto status = stub_->is_primary(&context, request, &reply);
-    if (!status.ok()) {
-      throw RPCFailException(status);
-      // throw std::exception();
-    }
-    return reply.yeah();
-  }
-
   grpc::Status RepliWrite(int64_t addr, const std::string& data) {
     hadev::Request request;
     grpc::ClientContext context;
@@ -116,13 +103,8 @@ class HeartbeatClient {
     }
   }
 
-  void Start() {
+  void LoopUntilNotPrimary() {
     while (true) {
-      // TODO:
-      if (!*i_am_primary) {
-        usleep(TIMEOUTMS * 300);
-        continue;
-      }
       auto status = BeatHeart();
       if (status.ok()) {
         if (is_backup_alive.load() == false) {

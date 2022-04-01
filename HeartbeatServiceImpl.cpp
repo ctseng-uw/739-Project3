@@ -2,10 +2,11 @@
 
 #include <fcntl.h>
 
+#include "TimeoutWatcher.cpp"
 #include "macro.h"
-
-HeartbeatServiceImpl::HeartbeatServiceImpl(std::shared_ptr<bool> i_am_primary)
-    : i_am_primary(i_am_primary) {
+HeartbeatServiceImpl::HeartbeatServiceImpl(
+    std::shared_ptr<bool> i_am_primary, std::shared_ptr<TimeoutWatcher> watcher)
+    : i_am_primary(i_am_primary), watcher(watcher) {
   fd = open(DEVICE, O_CREAT | O_RDWR, 0644);
   assert(fd >= 0);
 }
@@ -21,13 +22,7 @@ grpc::Status HeartbeatServiceImpl::RepliWrite(grpc::ServerContext *context,
     fsync(fd);
   }
 
-  reply->set_yeah(true);
-  return grpc::Status::OK;
-}
-
-grpc::Status HeartbeatServiceImpl::is_primary(grpc::ServerContext *context,
-                                              const hadev::Blank *req,
-                                              hadev::Reply *reply) {
-  reply->set_yeah(*i_am_primary);
+  reply->set_i_am_primary(*i_am_primary);
+  watcher->NotifyHeartBeat();
   return grpc::Status::OK;
 }
