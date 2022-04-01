@@ -6,13 +6,13 @@ from .server import Server
 
 
 async def test_single_block(servers: List[Server], clients: List[Client]):
-    await servers[0].start_as_backup()
+    await servers[0].start_as_primary()
     await clients[0].write(0, 0, "apple")
     assert await clients[0].read(0, 0) == pad_to_4096("apple")
 
 
 async def test_unaligned_block(servers: List[Server], clients: List[Client]):
-    await servers[0].start_as_backup()
+    await servers[0].start_as_primary()
     await clients[0].write(0, 0, "apple")
     await clients[0].write(0, 5, "banana")
     assert await clients[0].read(0, 0) == pad_to_4096("applebanana")
