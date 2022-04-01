@@ -13,7 +13,7 @@ class Server:
     async def start_server(self):
         assert self.proc is None
         self.proc = await self.conn.create_process(
-            f"/tmp/server {self.node_number} {self.node_number}"
+            f"/tmp/server {self.node_number} {1 - self.node_number}"
         )
         await self.proc.stdout.readuntil(MAGIC["MAGIC_SERVER_START"])
         logging.info(f"Server started at node {self.node_number}")

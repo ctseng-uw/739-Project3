@@ -34,8 +34,8 @@ int main(int argc, char **argv) {
 
   int my_node_number = atoi(argv[1]);
   // TODO: ugly
-  bool i_am_primary = atoi(argv[2]);
-  auto i_am_primary_ptr = std::make_shared<bool>(i_am_primary);
+  // bool i_am_primary = atoi(argv[2]);
+  auto i_am_primary_ptr = std::make_shared<bool>(atoi(argv[2]));
 
   auto watcher = std::make_shared<TimeoutWatcher>();
 
@@ -63,12 +63,22 @@ int main(int argc, char **argv) {
   std::cout << MAGIC_SERVER_START << std::endl;
   auto server = builder.BuildAndStart();
 
+  if (*i_am_primary_ptr)
+    puts("Start as PRIMARY");
+  else
+    puts("Start as BACKUP");
   while (true) {
-    if (i_am_primary) {
-      heartbeat_client->LoopUntilNotPrimary();
+    if (*i_am_primary_ptr) {
+      puts("Calling LoopUntilConflict");
+      heartbeat_client->LoopUntilConflict();
+      if (my_node_number == 1) {
+        puts("PRIMARY to BACKUP");
+        *i_am_primary_ptr = false;
+      }
     } else {
       watcher->BlockUntilHeartbeatTimeout();
-      puts("time out");
+      *i_am_primary_ptr = true;
+      puts("BACKUP to PRIMARY");
     }
   }
 

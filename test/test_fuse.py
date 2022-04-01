@@ -6,6 +6,7 @@ from .fixtures import *
 async def test_hello_fuse(servers: List[Server], clients: List[Client]):
     await servers[0].start_server()
     await servers[1].start_server()
+    await servers[0].recovery_complete()
     await clients[0].run("mkdir -p /tmp/go")
     await clients[0].run("/tmp/mfsfuse -s /tmp/go")
     await clients[0].run("echo -n 'hello world' > /tmp/hello.txt")
@@ -31,6 +32,7 @@ async def test_sqlite(servers: List[Server], clients: List[Client]):
     """
     await servers[0].start_server()
     await servers[1].start_server()
+    await servers[0].recovery_complete()
     await clients[0].run("mkdir -p /tmp/go")
     await clients[0].run("/tmp/mfsfuse -s /tmp/go")
     await clients[0].run("sqlite /tmp/go/test.sql", sqlcmd)

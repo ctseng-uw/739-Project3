@@ -1,11 +1,13 @@
 #pragma once
+#include <grpcpp/support/status_code_enum.h>
+
 #include <exception>
 #include <queue>
 
 #include "includes/heartbeat.grpc.pb.h"
 #include "includes/heartbeat.pb.h"
 #include "magic.h"
-const uint32_t TIMEOUTMS = 10;
+// const uint32_t TIMEOUTMS = 10;
 
 class RPCFailException : public std::runtime_error {
  public:
@@ -31,15 +33,24 @@ class HeartbeatClient {
   std::shared_ptr<bool> i_am_primary;
 
   auto BeatHeart() {
+    puts("Call BeatHeart");
+
     hadev::Request request;
     grpc::ClientContext context;
     hadev::Reply reply;
 
+    auto deadline =
+        std::chrono::system_clock::now() + std::chrono::milliseconds(100);
+    context.set_deadline(deadline);
+
     grpc::Status status = stub_->RepliWrite(&context, request, &reply);
+    // puts("BeatHeart");
     return status;
   }
 
   grpc::Status RepliWrite(int64_t addr, const std::string& data) {
+    puts("Call Write");
+
     hadev::Request request;
     grpc::ClientContext context;
     hadev::Reply reply;
@@ -103,20 +114,24 @@ class HeartbeatClient {
     }
   }
 
-  void LoopUntilNotPrimary() {
+  void LoopUntilConflict() {
+    puts("LoopUntilConflict");
     while (true) {
       auto status = BeatHeart();
       if (status.ok()) {
         if (is_backup_alive.load() == false) {
           RunRecovery();
         }
-        usleep(TIMEOUTMS * 300);
+        // } else if (status.error_code() == grpc::StatusCode::OUT_OF_RANGE) {
+        //   puts("Two primaries");
+        //   return;
       } else {
         if (is_backup_alive.load() == true) {
           puts("Backup dead (heartbeat)");
           is_backup_alive.store(0);
         }
       }
+      sleep(1);
     }
   }
 };

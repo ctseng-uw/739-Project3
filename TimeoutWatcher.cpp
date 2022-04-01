@@ -14,7 +14,7 @@ class TimeoutWatcher {
     while (true) {
       std::unique_lock<std::mutex> lk(cv_m);
       auto ret =
-          cv.wait_for(lk, 100ms, [this] { return heartbeat_received == true; });
+          cv.wait_for(lk, 10s, [this] { return heartbeat_received == true; });
       if (ret == true) {
         heartbeat_received = false;
       } else {
@@ -26,6 +26,7 @@ class TimeoutWatcher {
   void NotifyHeartBeat() {
     {
       std::lock_guard<std::mutex> lk(cv_m);
+      puts("Receive heartbeat.");
       heartbeat_received = true;
     }
     cv.notify_all();

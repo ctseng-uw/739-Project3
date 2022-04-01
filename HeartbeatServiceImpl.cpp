@@ -14,6 +14,12 @@ HeartbeatServiceImpl::HeartbeatServiceImpl(
 grpc::Status HeartbeatServiceImpl::RepliWrite(grpc::ServerContext *context,
                                               const hadev::Request *req,
                                               hadev::Reply *reply) {
+  puts("Receive RepliWrite");
+
+  // if (i_am_primary) {
+  //   return grpc::Status(grpc::StatusCode::OUT_OF_RANGE, "");
+  // }
+
   if (req->has_data() && req->has_addr()) {
     std::lock_guard<std::mutex> lg(mutex);
     assert(req->data().length() == BLOCK_SIZE);
