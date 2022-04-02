@@ -23,7 +23,7 @@
 using grpc::ServerBuilder;
 
 const std::array<std::string, 2> LAN_ADDR{"node0", "node1"};
-const std::string PORT = "50051";
+const std::string PORT = "23576 ";
 
 int main(int argc, char **argv) {
   if (argc != 3) {
