@@ -39,10 +39,6 @@ class HeartbeatClient {
     hadev::Reply reply;
 
     context.set_wait_for_ready(true);
-    auto deadline =
-        std::chrono::system_clock::now() + std::chrono::milliseconds(100);
-    context.set_deadline(deadline);
-
     grpc::Status status = stub_->RepliWrite(&context, request, &reply);
     if (!status.ok()) {
       return -1;
@@ -57,11 +53,15 @@ class HeartbeatClient {
     hadev::Request request;
     grpc::ClientContext context;
     hadev::Reply reply;
+    context.set_wait_for_ready(true);
     request.set_addr(addr);
     request.set_data(data);
     grpc::Status status = stub_->RepliWrite(&context, request, &reply);
-    if (!status.ok())
-      return 2;
+    if (!status.ok()) {
+      assert(status.error_code() >= 2);
+      return status.error_code();
+    }
+
     else if (reply.i_am_primary())
       return 1;
     return 0;
@@ -125,8 +125,8 @@ class HeartbeatClient {
     } else if (rc == 1) {
       puts("Failed to write backup");
       return false;
-    } else if (rc == 2) {
-      puts("Backup timeout. Write to log");
+    } else if (rc >= 2) {
+      std::cout << "gRPC status code=" << rc << ". Write to log\n";
       {
         std::lock_guard<std::mutex> lock(mutex);
         log.push({seq.fetch_add(1), addr, data});
