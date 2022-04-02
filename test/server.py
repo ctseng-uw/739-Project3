@@ -39,7 +39,7 @@ class Server:
         return proc.stdout
 
     async def close(self):
-        await self.conn.run("pkill server")
+        await self.conn.run("pkill -f server")
         await self.conn.run("mv /tmp/fake_device.bin /tmp/fake_device.bin.bk")
         return self.conn.close()
 
