@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
   grpc::ChannelArguments ch_args;
   ch_args.SetMaxReceiveMessageSize(INT_MAX);
   ch_args.SetMaxSendMessageSize(INT_MAX);
+  ch_args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, 100);
 
   auto heartbeat_client = std::make_shared<HeartbeatClient>(
       grpc::CreateCustomChannel(LAN_ADDR[1 - my_node_number] + ":" + PORT,
