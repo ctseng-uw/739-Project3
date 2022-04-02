@@ -23,7 +23,7 @@
 using grpc::ServerBuilder;
 
 const std::array<std::string, 2> LAN_ADDR{"node0", "node1"};
-const std::string PORT = "23576";
+const std::string PORT = "50051";
 
 int main(int argc, char **argv) {
   if (argc != 3) {
@@ -49,7 +49,8 @@ int main(int argc, char **argv) {
       i_am_primary);
 
   BlockStoreServiceImpl blockstore_service(i_am_primary, heartbeat_client);
-  HeartbeatServiceImpl heartbeat_service(i_am_primary, watcher, my_node_number);
+  HeartbeatServiceImpl heartbeat_service(i_am_primary, watcher, my_node_number,
+                                         heartbeat_client);
 
   grpc::ServerBuilder builder;
   const std::string server_address = "0.0.0.0:" + PORT;
