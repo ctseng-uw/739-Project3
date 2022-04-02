@@ -32,9 +32,7 @@ class HeartbeatClient {
   std::mutex mutex;
   std::shared_ptr<bool> i_am_primary;
 
-  auto BeatHeart() {
-    puts("Call BeatHeart");
-
+  grpc::Status BeatHeart() {
     hadev::Request request;
     grpc::ClientContext context;
     hadev::Reply reply;
@@ -44,7 +42,6 @@ class HeartbeatClient {
     context.set_deadline(deadline);
 
     grpc::Status status = stub_->RepliWrite(&context, request, &reply);
-    // puts("BeatHeart");
     return status;
   }
 
@@ -103,16 +100,20 @@ class HeartbeatClient {
   // Return: True==Write success (to remote or log).
   //         False==Remote is primary. Did not write.
   bool Write(int64_t addr, const std::string& data) {
+    puts("PRIMARY calls Write. Write to backup or log?");
     int rc = 2;  // 0=OK 1=other_side_is_primary 2=timeout
     if (is_backup_alive.load()) {
       puts("Write to backup");
       rc = RepliWrite(addr, data);
     }
 
-    if (rc == 1) {
+    if (rc == 0) {
+      puts("Successfully wrote to backup");
+    } else if (rc == 1) {
+      puts("Failed to write backup");
       return false;
     } else if (rc == 2) {
-      puts("Write to log");
+      puts("Backup timeout. Write to log");
       {
         std::lock_guard<std::mutex> lock(mutex);
         log.push({seq.fetch_add(1), addr, data});
@@ -125,24 +126,28 @@ class HeartbeatClient {
     return true;
   }
 
-  void LoopForever() {
-    puts("LoopForever");
+  void BlockUntilBecomeBackup() {
+    int i = 0;  // just to see if server is running...
+    puts("BlockUntilBecomeBackup");
     while (true) {
-      auto status = BeatHeart();
-      if (status.ok()) {
+      if (*i_am_primary == false) {
+        return;
+      }
+      auto remote_status = BeatHeart();
+      printf("%4d Call BeatHeart\n", i++);
+      if (remote_status.ok()) {
         if (is_backup_alive.load() == false) {
           RunRecovery();
         }
-        // } else if (status.error_code() == grpc::StatusCode::OUT_OF_RANGE) {
-        //   puts("Two primaries");
-        //   return;
       } else {
         if (is_backup_alive.load() == true) {
           puts("Backup dead (heartbeat)");
           is_backup_alive.store(0);
+        } else {
+          puts("Backup is still dead");
         }
       }
-      sleep(1);
+      usleep(200000);  // send heartbeat every 200 ms
     }
   }
 };

@@ -30,16 +30,21 @@ class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
   Status Write(ServerContext *context, const hadev::WriteRequest *req,
                hadev::WriteReply *reply) {
     assert(req->data().length() == BLOCK_SIZE);
+    puts("Rcv client write request");
     if (*i_am_primary == false) {
+      puts("I think I am backup. Do nothing");
       reply->set_ret(1);  // Saying I am backup
       return Status::OK;
     }
     {
-      bool remote_write_succeed =
+      puts("I think I am primary. Try write to remote or log");
+      bool remote_or_log_write_succeed =
           heartbeat_client->Write(req->addr(), req->data());
       // write fails only when the remote compares node_number and
       // then still think it is the primary. we must be backup (node1) then.
-      if (!remote_write_succeed) {
+      if (!remote_or_log_write_succeed) {
+        puts("other node think it is primary. Turning to backup...");
+        puts("Ask client to send request to the other node");
         *i_am_primary = false;
         reply->set_ret(1);  // Means I am backup;
         return Status::OK;
@@ -55,10 +60,13 @@ class BlockStoreServiceImpl final : public hadev::BlockStore::Service {
 
   Status Read(ServerContext *context, const hadev::ReadRequest *req,
               hadev::ReadReply *reply) {
+    puts("Rcv client read request");
     if (*i_am_primary == false) {
+      puts("I think I am backup. Do nothing");
       reply->set_ret(1);  // Saying I am backup
       return Status::OK;
     }
+    puts("I think I am primary. Reading...");
     lseek(fd, req->addr(), SEEK_SET);
     char buf[BLOCK_SIZE];
     read(fd, buf, BLOCK_SIZE);

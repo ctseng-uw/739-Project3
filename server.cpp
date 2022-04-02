@@ -64,18 +64,23 @@ int main(int argc, char **argv) {
 
   if (*i_am_primary)
     puts("Start as PRIMARY");
-  else
+  else {
     puts("Start as BACKUP");
+    puts("Wait for the first heartbeat from Primary");
+    watcher->BlockUntilRcvFirstHeartbeat();
+    puts("Found Primary");
+  }
   while (true) {
     if (*i_am_primary) {
-      heartbeat_client->LoopForever();
-      puts("Error: Exit LoopForever");
-      if (my_node_number == 1) {
-        puts("PRIMARY to BACKUP");
-        *i_am_primary = false;
-      }
+      heartbeat_client->BlockUntilBecomeBackup();  // Keep sending heartbeat
+      puts("Exit BlockUntilBecomeBackup. Turning to BACKUP");
+      // if (my_node_number == 1) {
+      //   puts("PRIMARY to BACKUP");
+      //   *i_am_primary = false;
+      // }
     } else {
       watcher->BlockUntilHeartbeatTimeout();
+      puts("Exit BlockUntilHeartbeatTimeout. Turning to PRIMARY");
       *i_am_primary = true;
       std::cout << MAGIC_BECOMES_PRIMARY << std::endl;
     }
