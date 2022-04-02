@@ -64,12 +64,8 @@ int main(int argc, char **argv) {
 
   if (*i_am_primary)
     puts("Start as PRIMARY");
-  else {
+  else
     puts("Start as BACKUP");
-    puts("Wait for the first heartbeat from Primary");
-    watcher->BlockUntilRcvFirstHeartbeat();
-    puts("Found Primary");
-  }
   while (true) {
     if (*i_am_primary) {
       heartbeat_client->BlockUntilBecomeBackup();  // Keep sending heartbeat

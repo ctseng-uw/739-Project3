@@ -8,25 +8,19 @@ class TimeoutWatcher {
   std::condition_variable cv;
   std::mutex cv_m;
   bool heartbeat_received;
+  // First timeout should bit a bit longer
+  std::chrono::seconds timeout = 3s;
 
  public:
-  void BlockUntilRcvFirstHeartbeat() {
-    std::unique_lock<std::mutex> lk(cv_m);
-    cv.wait(lk);
-  }
-
   void BlockUntilHeartbeatTimeout() {
-    puts("Enter BlockUntilHeartbeatTimeout");
-    int i = 0;  // Debug
     while (true) {
       std::unique_lock<std::mutex> lk(cv_m);
-      auto ret =
-          cv.wait_for(lk, 1s, [this] { return heartbeat_received == true; });
+      auto ret = cv.wait_for(lk, timeout,
+                             [this] { return heartbeat_received == true; });
+      timeout = 1s;  // Reduce subsequent timeout
       if (ret == true) {
-        printf("%4d HB Rcvr: Reset timer\n", i++);
         heartbeat_received = false;
       } else {
-        printf("%4d HB Rcvr: Timeout\n", i++);
         return;
       }
     }
@@ -35,8 +29,9 @@ class TimeoutWatcher {
   void NotifyHeartBeat() {
     {
       std::lock_guard<std::mutex> lk(cv_m);
+      puts("Receive heartbeat.");
       heartbeat_received = true;
     }
-    cv.notify_all();
+    cv.notify_one();
   }
 };

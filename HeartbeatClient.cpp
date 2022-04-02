@@ -37,6 +37,7 @@ class HeartbeatClient {
     grpc::ClientContext context;
     hadev::Reply reply;
 
+    context.set_fail_fast(false);
     auto deadline =
         std::chrono::system_clock::now() + std::chrono::milliseconds(100);
     context.set_deadline(deadline);
