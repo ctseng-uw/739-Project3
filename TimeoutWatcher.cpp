@@ -29,7 +29,6 @@ class TimeoutWatcher {
   void NotifyHeartBeat() {
     {
       std::lock_guard<std::mutex> lk(cv_m);
-      puts("Receive heartbeat.");
       heartbeat_received = true;
     }
     cv.notify_one();

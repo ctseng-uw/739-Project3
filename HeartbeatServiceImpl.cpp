@@ -17,32 +17,35 @@ HeartbeatServiceImpl::HeartbeatServiceImpl(
 grpc::Status HeartbeatServiceImpl::RepliWrite(grpc::ServerContext *context,
                                               const hadev::Request *req,
                                               hadev::Reply *reply) {
-  // if I am Primary {{and receive real Write message, not heartbeat}}
-  // Check who should be the primary
   if (req->has_data() && req->has_addr()) {
     puts("Get Write request");
-    if (*i_am_primary) {
-      puts("Double primary");
-      // Check who wins to be the real primary
-      if (my_node_number == 1) {
-        puts("PRIMARY to BACKUP");
-        *i_am_primary = false;
-      } else {
-        // I am the primary. refuse to write
-        puts("I'm PRIMARY. Refuse to write");
-        reply->set_i_am_primary(*i_am_primary);
-        return grpc::Status::OK;
-      }
-    }
+  } else {
+    puts("Get heartbeat");
+  }
 
+  // if I am Primary, Check who should be the primary
+  if (*i_am_primary) {
+    puts("Double primary");
+    // Check who wins to be the real primary
+    if (my_node_number == 1) {
+      puts("PRIMARY to BACKUP");
+      *i_am_primary = false;
+    } else {
+      // I am the primary. refuse to write
+      puts("I'm PRIMARY. Refuse to change (and write)");
+      reply->set_i_am_primary(*i_am_primary);
+      return grpc::Status::OK;
+    }
+  }
+
+  // If this is a write request and I am backup, I write
+  if (req->has_data() && req->has_addr()) {
     assert(*i_am_primary == false);
     std::lock_guard<std::mutex> lg(mutex);
     assert(req->data().length() == BLOCK_SIZE);
     lseek(fd, req->addr(), SEEK_SET);
     write(fd, req->data().c_str(), BLOCK_SIZE);
     fsync(fd);
-  } else {
-    puts("Get heartbeat");
   }
 
   reply->set_i_am_primary(*i_am_primary);
