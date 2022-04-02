@@ -17,7 +17,7 @@ using grpc::ClientContext;
 
 class BlockStoreClient {
  public:
-  BlockStoreClient(std::string target_str = "10.10.1.1:50051") {
+  BlockStoreClient(std::string target_str = "10.10.1.1:23576") {
     grpc::ChannelArguments ch_args;
 
     ch_args.SetMaxReceiveMessageSize(INT_MAX);
@@ -39,7 +39,7 @@ class BlockStoreClient {
     if (!status.ok()) {
       return -1;
     }
-    return 0;
+    return reply.ret();  //  0==OK 1==I_am_backup
   }
 
   std::string Read(const int64_t addr) {
