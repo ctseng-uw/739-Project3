@@ -67,8 +67,9 @@ class HeartbeatClient {
     return 0;
   };
 
-  void RunRecovery() {
+  int RunRecovery() {
     puts("Starting recovery");
+    int cnt = 0;
     LogEnt ent;
     while (true) {
       {
@@ -80,9 +81,13 @@ class HeartbeatClient {
         ent = log.front();
       }
       int rc = RepliWrite(ent.addr, ent.data);
-      assert(rc != 1);  // It cannot think it is primary!
-      if (rc == 2) {
-        puts("Backup dead while recovering");
+      if (rc == 0) {
+        ++cnt;
+      } else if (rc == 1) {
+        puts("Both side have logs and think thry're primary!");
+        assert(false);
+      } else if (rc == 2) {
+        puts("Remote dead while recovering");
         break;
       }
       {
@@ -92,6 +97,7 @@ class HeartbeatClient {
     }
 
     std::cout << MAGIC_RECOVERY_COMPLETE << std::endl;
+    return cnt;
   }
 
  public:
@@ -101,6 +107,8 @@ class HeartbeatClient {
     is_backup_alive.store(0);
     seq.store(0);
   };
+
+  bool LogEmpty() { return log.empty(); }
 
   // Return: True==Write success (to remote or log).
   //         False==Remote is primary. Did not write.
@@ -144,10 +152,10 @@ class HeartbeatClient {
       if (remote_status >= 0) {
         if (is_backup_alive.load() == false) {
           puts("Remote alive (heartbeat).");
-          if (remote_status == 0)
-            RunRecovery();
-          else { // remote_status == 1
-            puts("Remote think it is Primary");
+          int recovery_cnt = RunRecovery();
+          if (is_backup_alive.load() == true && remote_status == 1 &&
+              recovery_cnt == 0) {
+            puts("Remote think it is Primary and I had no log");
             puts("PRIMARY to BACKUP");
             *i_am_primary = false;
             return;

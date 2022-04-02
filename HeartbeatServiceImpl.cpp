@@ -6,10 +6,11 @@
 #include "macro.h"
 HeartbeatServiceImpl::HeartbeatServiceImpl(
     std::shared_ptr<bool> i_am_primary, std::shared_ptr<TimeoutWatcher> watcher,
-    const int my_node_number)
+    const int my_node_number, std::shared_ptr<HeartbeatClient> hb_client)
     : i_am_primary(i_am_primary),
       watcher(watcher),
-      my_node_number(my_node_number) {
+      my_node_number(my_node_number),
+      hb_client(hb_client) {
   fd = open(DEVICE, O_CREAT | O_RDWR, 0644);
   assert(fd >= 0);
 }
@@ -17,17 +18,15 @@ HeartbeatServiceImpl::HeartbeatServiceImpl(
 grpc::Status HeartbeatServiceImpl::RepliWrite(grpc::ServerContext *context,
                                               const hadev::Request *req,
                                               hadev::Reply *reply) {
-  if (req->has_data() && req->has_addr()) {
-    puts("Get Write request");
-  } else {
-    puts("Get heartbeat");
-  }
+  bool write_req = req->has_data() && req->has_addr();
+  puts(write_req ? "Get Write request" : "Get heartbeat");
 
   // if I am Primary, Check who should be the primary
   if (*i_am_primary) {
     puts("Double primary");
     // Check who wins to be the real primary
-    if (my_node_number == 1) {
+    // Stuck if both server logs are non-empty
+    if ((write_req || my_node_number == 1) && hb_client->LogEmpty()) {
       puts("PRIMARY to BACKUP");
       *i_am_primary = false;
     } else {
