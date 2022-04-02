@@ -8,7 +8,7 @@ message WriteRequest {
 }
 
 message WriteReply {
-  int32 ret = 1;
+  int32 ret = 1; //  0==OK 1==I_am_backup
 }
 
 message ReadRequest {
