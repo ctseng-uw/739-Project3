@@ -5,7 +5,8 @@
 class HeartbeatServiceImpl final : public hadev::Heartbeat::Service {
  public:
   HeartbeatServiceImpl(std::shared_ptr<bool> i_am_primary,
-                       std::shared_ptr<TimeoutWatcher> watcher);
+                       std::shared_ptr<TimeoutWatcher> watcher,
+                       const int my_node_number);
   grpc::Status RepliWrite(grpc::ServerContext *context,
                           const hadev::Request *req, hadev::Reply *reply);
 
@@ -14,4 +15,5 @@ class HeartbeatServiceImpl final : public hadev::Heartbeat::Service {
   std::shared_ptr<bool> i_am_primary;
   std::mutex mutex;
   std::shared_ptr<TimeoutWatcher> watcher;
+  const int my_node_number;
 };
