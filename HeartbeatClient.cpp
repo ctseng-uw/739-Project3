@@ -3,6 +3,7 @@
 
 #include <exception>
 #include <queue>
+#include <thread>
 
 #include "includes/heartbeat.grpc.pb.h"
 #include "includes/heartbeat.pb.h"
@@ -37,7 +38,7 @@ class HeartbeatClient {
     grpc::ClientContext context;
     hadev::Reply reply;
 
-    context.set_fail_fast(false);
+    context.set_wait_for_ready(true);
     auto deadline =
         std::chrono::system_clock::now() + std::chrono::milliseconds(100);
     context.set_deadline(deadline);
@@ -128,6 +129,7 @@ class HeartbeatClient {
   }
 
   void BlockUntilBecomeBackup() {
+    using namespace std::chrono_literals;
     int i = 0;  // just to see if server is running...
     puts("BlockUntilBecomeBackup");
     while (true) {
@@ -148,7 +150,7 @@ class HeartbeatClient {
           puts("Backup is still dead");
         }
       }
-      usleep(200000);  // send heartbeat every 200 ms
+      std::this_thread::sleep_for(200ms);
     }
   }
 };
