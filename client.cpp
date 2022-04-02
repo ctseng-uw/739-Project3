@@ -14,23 +14,20 @@ int main(int argc, char **argv) {
     addr = std::atoi(argv[2]);
     is_read = true;
     designated_server = false;
-  }
-  else if (argc == 4) {
+  } else if (argc == 4) {
     if (argv[2][0] == 'r') {
       server_id = std::atoi(argv[1]);
       addr = std::atoi(argv[3]);
       is_read = true;
       designated_server = true;
-    }
-    else {
+    } else {
       server_id = 0;
       addr = std::atoi(argv[2]);
       data = std::string(argv[3]);
       is_read = false;
       designated_server = false;
     }
-  }
-  else if (argc == 5) {
+  } else if (argc == 5) {
     server_id = std::atoi(argv[1]);
     addr = std::atoi(argv[3]);
     data = std::string(argv[4]);

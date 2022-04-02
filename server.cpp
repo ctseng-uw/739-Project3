@@ -23,7 +23,7 @@
 using grpc::ServerBuilder;
 
 const std::array<std::string, 2> LAN_ADDR{"node0", "node1"};
-const std::string PORT = "50051";
+const std::string PORT = "23576";
 
 int main(int argc, char **argv) {
   if (argc != 3) {
@@ -70,14 +70,11 @@ int main(int argc, char **argv) {
   while (true) {
     if (*i_am_primary) {
       heartbeat_client->BlockUntilBecomeBackup();  // Keep sending heartbeat
-      puts("Exit BlockUntilBecomeBackup. Turning to BACKUP");
-      // if (my_node_number == 1) {
-      //   puts("PRIMARY to BACKUP");
-      //   *i_am_primary = false;
-      // }
+      puts("Exit BlockUntilBecomeBackup. Turned to BACKUP");
     } else {
       watcher->BlockUntilHeartbeatTimeout();
-      puts("Exit BlockUntilHeartbeatTimeout. Turning to PRIMARY");
+      puts("Exit BlockUntilHeartbeatTimeout.");
+      puts("BACKUP to PRIMARY");
       *i_am_primary = true;
       std::cout << MAGIC_BECOMES_PRIMARY << std::endl;
     }

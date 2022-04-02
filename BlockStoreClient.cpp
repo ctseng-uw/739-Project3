@@ -18,11 +18,11 @@ using grpc::ClientContext;
 
 class BlockStoreClient {
  public:
-  BlockStoreClient(int current_server=0, bool designated_server=true)
-    : current_server(current_server), designated_server(designated_server) {
+  BlockStoreClient(int current_server = 0, bool designated_server = true)
+      : current_server(current_server), designated_server(designated_server) {
     server_ip = std::vector<std::string>(
-      {"node0.hadev2.advosuwmadison.emulab.net:50051",
-        "node1.hadev2.advosuwmadison.emulab.net:50051"});
+        {"node0.hadev2.advosuwmadison.emulab.net:50051",
+         "node1.hadev2.advosuwmadison.emulab.net:50051"});
 
     grpc::ChannelArguments ch_args;
 
@@ -30,7 +30,8 @@ class BlockStoreClient {
     ch_args.SetMaxSendMessageSize(INT_MAX);
 
     stub_ = hadev::BlockStore::NewStub((grpc::CreateCustomChannel(
-        server_ip[current_server], grpc::InsecureChannelCredentials(), ch_args)));
+        server_ip[current_server], grpc::InsecureChannelCredentials(),
+        ch_args)));
   }
 
   int Write(const int64_t addr, const std::string &data) {
@@ -43,7 +44,8 @@ class BlockStoreClient {
       ClientContext context;
       hadev::WriteReply reply;
       auto status = stub_->Write(&context, request, &reply);
-      if (!status.ok()) {
+      if (!status.ok() ||
+          reply.ret() == 1) {  // ret() == 1 means server is backup
         if (!designated_server) {
           puts("ChangeServer in Write");
           ChangeServer();
@@ -62,7 +64,8 @@ class BlockStoreClient {
       ClientContext context;
       hadev::ReadReply reply;
       auto status = stub_->Read(&context, request, &reply);
-      if (!status.ok()) {
+      if (!status.ok() ||
+          reply.ret() == 1) {  // ret() == 1 means server is backup
         if (!designated_server) {
           puts("ChangeServer in Read");
           ChangeServer();
@@ -93,6 +96,7 @@ class BlockStoreClient {
     ch_args.SetMaxSendMessageSize(INT_MAX);
 
     stub_ = hadev::BlockStore::NewStub((grpc::CreateCustomChannel(
-    server_ip[current_server], grpc::InsecureChannelCredentials(), ch_args)));
+        server_ip[current_server], grpc::InsecureChannelCredentials(),
+        ch_args)));
   }
 };

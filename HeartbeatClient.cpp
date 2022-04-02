@@ -33,7 +33,7 @@ class HeartbeatClient {
   std::mutex mutex;
   std::shared_ptr<bool> i_am_primary;
 
-  grpc::Status BeatHeart() {
+  int BeatHeart() {
     hadev::Request request;
     grpc::ClientContext context;
     hadev::Reply reply;
@@ -44,7 +44,10 @@ class HeartbeatClient {
     context.set_deadline(deadline);
 
     grpc::Status status = stub_->RepliWrite(&context, request, &reply);
-    return status;
+    if (!status.ok()) {
+      return -1;
+    }
+    return reply.i_am_primary();
   }
 
   // Return value: 0=OK 1=other_side_is_primary 2=timeout
@@ -136,18 +139,24 @@ class HeartbeatClient {
       if (*i_am_primary == false) {
         return;
       }
-      auto remote_status = BeatHeart();
+      int remote_status = BeatHeart();
       printf("%4d Call BeatHeart\n", i++);
-      if (remote_status.ok()) {
+      if (remote_status >= 0) {
         if (is_backup_alive.load() == false) {
-          RunRecovery();
+          puts("Remote alive (heartbeat).");
+          if (remote_status == 0)
+            RunRecovery();
+          else { // remote_status == 1
+            puts("Remote think it is Primary");
+            puts("PRIMARY to BACKUP");
+            *i_am_primary = false;
+            return;
+          }
         }
       } else {
         if (is_backup_alive.load() == true) {
-          puts("Backup dead (heartbeat)");
+          puts("Remote dead (heartbeat)");
           is_backup_alive.store(0);
-        } else {
-          puts("Backup is still dead");
         }
       }
       std::this_thread::sleep_for(200ms);
