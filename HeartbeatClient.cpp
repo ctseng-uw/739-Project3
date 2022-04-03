@@ -9,6 +9,7 @@
 #include "includes/heartbeat.pb.h"
 #include "magic.h"
 // const uint32_t TIMEOUTMS = 10;
+using namespace std::chrono_literals;
 
 class RPCFailException : public std::runtime_error {
  public:
@@ -54,6 +55,7 @@ class HeartbeatClient {
     grpc::ClientContext context;
     hadev::Reply reply;
     context.set_wait_for_ready(true);
+    context.set_deadline(std::chrono::system_clock::now() + 2s);
     request.set_addr(addr);
     request.set_data(data);
     grpc::Status status = stub_->RepliWrite(&context, request, &reply);
@@ -114,7 +116,7 @@ class HeartbeatClient {
   //         False==Remote is primary. Did not write.
   bool Write(int64_t addr, const std::string& data) {
     puts("PRIMARY calls Write. Write to backup or log?");
-    int rc = 2;  // 0=OK 1=other_side_is_primary 2=timeout
+    int rc = 99999;  // 0=OK 1=other_side_is_primary 2=timeout
     if (is_backup_alive.load()) {
       puts("Write to backup");
       rc = RepliWrite(addr, data);
@@ -126,7 +128,7 @@ class HeartbeatClient {
       puts("Failed to write backup");
       return false;
     } else if (rc >= 2) {
-      std::cout << "gRPC status code=" << rc << ". Write to log\n";
+      std::cout << "Status code=" << rc << ". Write to log\n";
       {
         std::lock_guard<std::mutex> lock(mutex);
         log.push({seq.fetch_add(1), addr, data});
@@ -159,6 +161,12 @@ class HeartbeatClient {
             puts("PRIMARY to BACKUP");
             *i_am_primary = false;
             return;
+          }
+        } else {  // is_backup_alive.load() == true
+          if (remote_status == 1) {
+            puts("Remote think it is Primary and I had no log");
+            puts("PRIMARY to BACKUP");
+            *i_am_primary = false;
           }
         }
       } else {
