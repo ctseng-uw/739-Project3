@@ -51,6 +51,8 @@ target_link_libraries(hadev grpc++)
 add_executable(client client.cpp)
 target_link_libraries(client hadev grpc++)
 
+add_executable(SessionClient SessionClient.cpp)
+target_link_libraries(SessionClient hadev grpc++)
 
 find_package(FUSE REQUIRED)
 include_directories(${FUSE_INCLUDE_DIR})
