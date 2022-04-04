@@ -51,8 +51,11 @@ class BlockStoreClient {
           ChangeServer();
           continue;
         }
+        std::cerr << (status.ok() ? "This server is backup"
+                                  : "Fail to call server");
         return -1;
       }
+      std::cerr << "Write to node" << current_server;
       return 0;
     }
   }
@@ -67,12 +70,15 @@ class BlockStoreClient {
       if (!status.ok() ||
           reply.ret() == 1) {  // ret() == 1 means server is backup
         if (!designated_server) {
-          puts("ChangeServer in Read");
+          // puts("ChangeServer in Read");
           ChangeServer();
           continue;
         }
+        std::cerr << (status.ok() ? "This server is backup"
+                                  : "Fail to call server");
         return nullptr;
       }
+      std::cerr << "Read from node" << current_server;
       return reply.data();
     }
   }

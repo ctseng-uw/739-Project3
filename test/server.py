@@ -39,9 +39,17 @@ class Server:
         return proc.stdout
 
     async def close(self):
-        await self.conn.run("pkill -f server")
+        await self.conn.run("pkill server")
         await self.conn.run("mv /tmp/fake_device.bin /tmp/fake_device.bin.bk")
         return self.conn.close()
+
+    async def lan_down(self, link_name: str):
+        await self.conn.run(f"sudo ip link set {link_name} down")
+        logging.info(f"Server {self.node_number} LAN down")
+
+    async def lan_up(self, link_name: str):
+        await self.conn.run(f"sudo ip link set {link_name} down")
+        logging.info(f"Server {self.node_number} LAN up")
 
     async def commit_suicide(self):
         assert self.proc is not None
