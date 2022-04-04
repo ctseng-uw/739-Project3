@@ -14,7 +14,7 @@ async def test_backup_dead(
     await backup.commit_suicide()
     await clients[0].write(0, 0, "banana")
     await clients[0].write(0, 6, "guava")
-    assert await clients[0].read(0, 0) == pad_to_4096("bananaguava")
+    assert (await clients[0].read(0, 0))[1] == pad_to_4096("bananaguava")
     assert await backup.get_device_digest() != await primary.get_device_digest()
     await backup.start_as_backup()
     await primary.recovery_complete()

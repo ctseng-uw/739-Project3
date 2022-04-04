@@ -55,7 +55,6 @@ int main(int argc, char **argv) {
   if (is_read) {
     std::cout << hadev.Read(addr);
   } else {
-    std::cout << "Write " << (hadev.Write(addr, data) ? "failed" : "succeed")
-              << std::endl;
+    return hadev.Write(addr, data);
   }
 }

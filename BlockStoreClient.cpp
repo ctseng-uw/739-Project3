@@ -20,9 +20,7 @@ class BlockStoreClient {
  public:
   BlockStoreClient(int current_server = 0, bool designated_server = true)
       : current_server(current_server), designated_server(designated_server) {
-    server_ip = std::vector<std::string>(
-        {"node0.hadev2.advosuwmadison.emulab.net:50051",
-         "node1.hadev2.advosuwmadison.emulab.net:50051"});
+    server_ip = std::vector<std::string>({"node0:50051", "node1:50051"});
 
     grpc::ChannelArguments ch_args;
 
@@ -51,8 +49,11 @@ class BlockStoreClient {
           ChangeServer();
           continue;
         }
+        std::cerr << (status.ok() ? "This server is backup"
+                                  : "Fail to call server");
         return -1;
       }
+      std::cerr << "Write to node" << current_server;
       return 0;
     }
   }
@@ -67,12 +68,15 @@ class BlockStoreClient {
       if (!status.ok() ||
           reply.ret() == 1) {  // ret() == 1 means server is backup
         if (!designated_server) {
-          puts("ChangeServer in Read");
+          // puts("ChangeServer in Read");
           ChangeServer();
           continue;
         }
+        std::cerr << (status.ok() ? "This server is backup"
+                                  : "Fail to call server");
         return nullptr;
       }
+      std::cerr << "Read from node" << current_server;
       return reply.data();
     }
   }

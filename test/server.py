@@ -3,6 +3,8 @@ import asyncssh
 import logging
 from .utils import MAGIC
 
+fake_device = "/tmp/fake_device.bin"
+
 
 class Server:
     def __init__(self, conn: asyncssh.SSHClientConnection, node_number):
@@ -35,13 +37,21 @@ class Server:
         logging.info(f"Server {self.node_number} becomes primary")
 
     async def get_device_digest(self):
-        proc = await self.conn.run("sha256sum /tmp/fake_device.bin")
+        proc = await self.conn.run(f"sha256sum {fake_device}")
         return proc.stdout
 
     async def close(self):
-        await self.conn.run("pkill -f server")
-        await self.conn.run("mv /tmp/fake_device.bin /tmp/fake_device.bin.bk")
+        await self.conn.run("pkill -x server")
+        await self.conn.run(f"mv {fake_device} {fake_device}.bk")
         return self.conn.close()
+
+    async def lan_down(self, link_name: str):
+        await self.conn.run(f"sudo ip link set {link_name} down")
+        logging.info(f"Server {self.node_number} LAN down")
+
+    async def lan_up(self, link_name: str):
+        await self.conn.run(f"sudo ip link set {link_name} up")
+        logging.info(f"Server {self.node_number} LAN up")
 
     async def commit_suicide(self):
         assert self.proc is not None
