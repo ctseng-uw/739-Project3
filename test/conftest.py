@@ -9,7 +9,7 @@ from .server import Server
 server_addrs = ["node0", "node1"]
 # server_external_addrs = ["node0.hadev3.advosuwmadison-pg0.wisc.cloudlab.us", "node1.hadev3.advosuwmadison-pg0.wisc.cloudlab.us"]
 server_external_addrs = ["node0.hadev2.advosuwmadison.emulab.net", "node1.hadev2.advosuwmadison.emulab.net"]
-client_addrs = ["node2", "node3"]
+client_addrs = ["node2.hadev2.advosuwmadison.emulab.net", "node3.hadev2.advosuwmadison.emulab.net"]
 linkname = "enp66s0f0"
 
 
@@ -84,6 +84,15 @@ async def link_name():
 @pytest.fixture
 async def setup_two_servers(servers: List[Server]):
     [primary, backup] = servers
+    logging.info(f"primary={primary.conn._host}, backup={backup.conn._host}")
+    await primary.start_as_primary()
+    await backup.start_as_backup()
+    await primary.recovery_complete()
+
+
+@pytest.fixture
+async def setup_two_servers_external(servers_external: List[Server]):
+    [primary, backup] = servers_external
     logging.info(f"primary={primary.conn._host}, backup={backup.conn._host}")
     await primary.start_as_primary()
     await backup.start_as_backup()

@@ -20,9 +20,7 @@ class BlockStoreClient {
  public:
   BlockStoreClient(int current_server = 0, bool designated_server = true)
       : current_server(current_server), designated_server(designated_server) {
-    server_ip = std::vector<std::string>(
-        {"node0.hadev2.advosuwmadison.emulab.net:50051",
-         "node1.hadev2.advosuwmadison.emulab.net:50051"});
+    server_ip = std::vector<std::string>({"node0:50051", "node1:50051"});
 
     grpc::ChannelArguments ch_args;
 
