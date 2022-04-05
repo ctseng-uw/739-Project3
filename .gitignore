@@ -143,3 +143,4 @@ mfsfuse
 **.pb.**
 SessionClient
 ReadWrite
+SingleServer

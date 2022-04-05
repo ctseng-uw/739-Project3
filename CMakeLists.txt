@@ -62,3 +62,6 @@ target_link_libraries(mfsfuse hadev grpc++ ${FUSE_LIBRARIES})
 
 add_executable(ReadWrite measurement/ReadWrite.cpp)
 target_link_libraries(ReadWrite hadev grpc++)
+
+add_executable(SingleServer SingleServer.cpp SingleBlockStoreServiceImpl.cpp ${PROTOBUF_DST})
+target_link_libraries(SingleServer grpc++)
