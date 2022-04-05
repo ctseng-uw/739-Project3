@@ -6,9 +6,13 @@ class Client:
     def __init__(self, conn: asyncssh.SSHClientConnection):
         self.conn = conn
 
-    async def write(self, target: int, addr: int, data: str) -> asyncssh.SSHCompletedProcess:
+    async def write(
+        self, target: int, addr: int, data: str
+    ) -> asyncssh.SSHCompletedProcess:
         logging.info(f"Client write to node{target} at {addr}")
-        client_proc = await self.conn.run(f"/tmp/client {target} w {addr} {data}", check=True)
+        client_proc = await self.conn.run(
+            f"/tmp/client {target} w {addr} {data}", check=True
+        )
         return client_proc
 
     async def write_any(self, addr: int, data: str) -> asyncssh.SSHCompletedProcess:

@@ -70,7 +70,7 @@ class HeartbeatClient {
   };
 
   int RunRecovery() {
-    puts("Starting recovery");
+    std::cout << MAGIC_STARTING_RECOVERY << std::endl;
     int cnt = 0;
     LogEnt ent;
     while (true) {

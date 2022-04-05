@@ -28,6 +28,10 @@ class Server:
     def start_as_backup(self):
         return self.__start_server(False)
 
+    async def starting_recovery(self):
+        await self.proc.stdout.readuntil(MAGIC["MAGIC_STARTING_RECOVERY"])
+        logging.info(f"Server {self.node_number} starting recovery")
+
     async def recovery_complete(self):
         await self.proc.stdout.readuntil(MAGIC["MAGIC_RECOVERY_COMPLETE"])
         logging.info(f"Server {self.node_number} recovery complete")

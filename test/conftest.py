@@ -7,8 +7,14 @@ from .client import Client
 from .server import Server
 
 server_addrs = ["node0", "node1"]
-server_external_addrs = ["node0.hadev3.advosuwmadison-pg0.wisc.cloudlab.us", "node1.hadev3.advosuwmadison-pg0.wisc.cloudlab.us"]
-client_addrs = ["node2.hadev3.advosuwmadison-pg0.wisc.cloudlab.us", "node3.hadev3.advosuwmadison-pg0.wisc.cloudlab.us"]
+server_external_addrs = [
+    "node0.hadev3.advosuwmadison-pg0.wisc.cloudlab.us",
+    "node1.hadev3.advosuwmadison-pg0.wisc.cloudlab.us",
+]
+client_addrs = [
+    "node2.hadev3.advosuwmadison-pg0.wisc.cloudlab.us",
+    "node3.hadev3.advosuwmadison-pg0.wisc.cloudlab.us",
+]
 linkname = "enp6s0f0"
 
 
@@ -66,6 +72,7 @@ async def servers():
     for s in ret:
         await s.close()
 
+
 @pytest.fixture
 async def servers_external():
     ret = []
@@ -80,6 +87,7 @@ async def servers_external():
 @pytest.fixture
 async def link_name():
     return linkname
+
 
 @pytest.fixture
 async def setup_two_servers(servers: List[Server]):
