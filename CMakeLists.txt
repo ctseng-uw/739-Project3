@@ -59,3 +59,6 @@ include_directories(${FUSE_INCLUDE_DIR})
 add_definitions("-D_FILE_OFFSET_BITS=64")
 add_executable(mfsfuse fs/io.cpp fs/io.h fs/mfs.cpp fs/mfs.h fs/mfsfuse.cpp)
 target_link_libraries(mfsfuse hadev grpc++ ${FUSE_LIBRARIES})
+
+add_executable(ReadWrite measurement/ReadWrite.cpp)
+target_link_libraries(ReadWrite hadev grpc++)
