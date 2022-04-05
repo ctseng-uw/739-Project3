@@ -5,7 +5,7 @@ from .utils import *
 import random, string
 
 
-async def test_backup_dead(
+async def test_backup_dead_simple(
     servers: List[Server], clients: List[Client], setup_two_servers: None
 ):
     backup = servers[1]

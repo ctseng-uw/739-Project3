@@ -5,6 +5,8 @@ import logging
 from typing import List
 from .client import Client
 from .server import Server
+from .utils import PREFIX
+import os
 
 server_addrs = ["node0", "node1"]
 server_external_addrs = [
@@ -17,30 +19,42 @@ client_addrs = [
 ]
 linkname = "enp6s0f0"
 
+test_dir = os.path.dirname(os.path.realpath(__file__))
+
 
 @pytest.fixture(scope="session", autouse=True)
 async def compile():
     asyncssh.set_log_level(100)
 
     async def run_in_build(cmd):
-        proc = await asyncio.create_subprocess_shell(cmd, cwd="../build")
+        proc = await asyncio.create_subprocess_shell(
+            cmd,
+            cwd=os.path.join(test_dir, "..", "build"),
+            stdout=asyncio.subprocess.PIPE,
+        )
         await proc.communicate()
         assert proc.returncode == 0
 
     await run_in_build("cmake ..")
     await run_in_build("make -j")
-    await asyncio.create_subprocess_shell(f"sudo ip link set {linkname} up")
+    await asyncio.create_subprocess_shell(f"sudo ip-tables -F")
     promises = []
     for s in server_addrs:
         promises.append(
-            run_in_build(f"scp -o 'StrictHostKeyChecking=no' server {s}:/tmp/server")
+            run_in_build(
+                f"scp -o 'StrictHostKeyChecking=no' server {s}:/tmp/{PREFIX}server"
+            )
         )
     for c in client_addrs:
         promises.append(
-            run_in_build(f"scp -o 'StrictHostKeyChecking=no' client {c}:/tmp/client")
+            run_in_build(
+                f"scp -o 'StrictHostKeyChecking=no' client {c}:/tmp/{PREFIX}client"
+            )
         )
         promises.append(
-            run_in_build(f"scp -o 'StrictHostKeyChecking=no' mfsfuse {c}:/tmp/mfsfuse")
+            run_in_build(
+                f"scp -o 'StrictHostKeyChecking=no' mfsfuse {c}:/tmp/{PREFIX}mfsfuse"
+            )
         )
     await asyncio.wait(promises)
     logging.info("Compile Done")

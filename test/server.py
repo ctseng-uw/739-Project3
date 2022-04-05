@@ -1,9 +1,10 @@
+import asyncio
 from typing import Optional
 import asyncssh
 import logging
-from .utils import MAGIC
+from .utils import MAGIC, PREFIX, PORT
 
-fake_device = "/tmp/fake_device.bin"
+fake_device = f"/tmp/{PREFIX}fake_device.bin"
 
 
 class Server:
@@ -15,7 +16,7 @@ class Server:
     async def __start_server(self, start_as_primary):
         assert self.proc is None
         self.proc = await self.conn.create_process(
-            f"/tmp/server {self.node_number} {1 if start_as_primary else 0}"
+            f"/tmp/{PREFIX}server {self.node_number} {1 if start_as_primary else 0}"
         )
         await self.proc.stdout.readuntil(MAGIC["MAGIC_SERVER_START"])
         logging.info(
@@ -45,16 +46,21 @@ class Server:
         return proc.stdout
 
     async def close(self):
-        await self.conn.run("pkill -x server")
+        await self.conn.run(f"pkill -x {PREFIX}server")
         await self.conn.run(f"mv {fake_device} {fake_device}.bk")
         return self.conn.close()
 
     async def lan_down(self, link_name: str):
-        await self.conn.run(f"sudo ip link set {link_name} down")
+        await self.conn.run(
+            f"sudo iptables -A OUTPUT -o {link_name} -p tcp --destination-port {PORT} -j DROP"
+        )
+        await self.conn.run(
+            f"sudo iptables -A INPUT -i {link_name} -p tcp --destination-port {PORT} -j DROP"
+        )
         logging.info(f"Server {self.node_number} LAN down")
 
     async def lan_up(self, link_name: str):
-        await self.conn.run(f"sudo ip link set {link_name} up")
+        await self.conn.run(f"sudo iptables -F")
         logging.info(f"Server {self.node_number} LAN up")
 
     async def commit_suicide(self):
