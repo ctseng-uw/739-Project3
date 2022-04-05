@@ -141,3 +141,4 @@ compile_commands.json
 mfsfuse
 *.bin
 **.pb.**
+SessionClient

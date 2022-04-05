@@ -7,10 +7,9 @@ from .client import Client
 from .server import Server
 
 server_addrs = ["node0", "node1"]
-# server_external_addrs = ["node0.hadev3.advosuwmadison-pg0.wisc.cloudlab.us", "node1.hadev3.advosuwmadison-pg0.wisc.cloudlab.us"]
-server_external_addrs = ["node0.hadev2.advosuwmadison.emulab.net", "node1.hadev2.advosuwmadison.emulab.net"]
-client_addrs = ["node2.hadev2.advosuwmadison.emulab.net", "node3.hadev2.advosuwmadison.emulab.net"]
-linkname = "enp66s0f0"
+server_external_addrs = ["node0.hadev3.advosuwmadison-pg0.wisc.cloudlab.us", "node1.hadev3.advosuwmadison-pg0.wisc.cloudlab.us"]
+client_addrs = ["node2.hadev3.advosuwmadison-pg0.wisc.cloudlab.us", "node3.hadev3.advosuwmadison-pg0.wisc.cloudlab.us"]
+linkname = "enp6s0f0"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -24,6 +23,7 @@ async def compile():
 
     await run_in_build("cmake ..")
     await run_in_build("make -j")
+    await asyncio.create_subprocess_shell(f"sudo ip link set {linkname} up")
     promises = []
     for s in server_addrs:
         promises.append(

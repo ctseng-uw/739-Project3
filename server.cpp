@@ -19,11 +19,11 @@
 #include "TimeoutWatcher.cpp"
 #include "grpcpp/resource_quota.h"
 #include "magic.h"
+#include "macro.h"
 
 using grpc::ServerBuilder;
 
 const std::array<std::string, 2> LAN_ADDR{"node0", "node1"};
-const std::string PORT = "50051";
 
 int main(int argc, char **argv) {
   if (argc != 3) {
