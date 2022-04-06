@@ -85,16 +85,14 @@ class HeartbeatClient {
       int rc = RepliWrite(ent.addr, ent.data);
       if (rc == 0) {
         ++cnt;
+        std::lock_guard<std::mutex> lg(mutex);
+        log.pop();
       } else if (rc == 1) {
         puts("Both side have logs and think thry're primary!");
         assert(false);
       } else if (rc == 2) {
         puts("Remote dead while recovering");
         break;
-      }
-      {
-        std::lock_guard<std::mutex> lg(mutex);
-        log.pop();
       }
     }
 
