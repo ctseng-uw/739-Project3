@@ -81,6 +81,8 @@ async def servers():
     ret = []
     for idx, node in enumerate(server_addrs):
         conn = await asyncssh.connect(node)
+        await conn.run(f"sudo pkill -x {PREFIX}server")
+        await conn.run("sudo dd if=/dev/zero of=/dev/sdc1 bs=1G count=1")
         ret.append(Server(conn, idx))
     yield ret
     for s in ret:
@@ -92,6 +94,8 @@ async def servers_external():
     ret = []
     for idx, node in enumerate(server_external_addrs):
         conn = await asyncssh.connect(node)
+        await conn.run(f"sudo pkill -x {PREFIX}server")
+        await conn.run("sudo dd if=/dev/zero of=/dev/sdc1 bs=1G count=1")
         ret.append(Server(conn, idx))
     yield ret
     for s in ret:
