@@ -30,7 +30,7 @@ async def test_backup_die_again_during_recovery(
     await clients[0].write(0, 0, "helloworld!")
     assert await backup.get_device_digest() == await primary.get_device_digest()
     await backup.commit_suicide()
-    for addr in range(100):
+    for addr in range(500):
         await clients[0].write(
             0,
             addr * 4096,

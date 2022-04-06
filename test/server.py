@@ -4,7 +4,7 @@ import asyncssh
 import logging
 from .utils import MAGIC, PREFIX, PORT
 
-fake_device = f"/tmp/{PREFIX}fake_device.bin"
+fake_device = f"/dev/sdc1"
 
 
 class Server:
@@ -16,7 +16,7 @@ class Server:
     async def __start_server(self, start_as_primary):
         assert self.proc is None
         self.proc = await self.conn.create_process(
-            f"/tmp/{PREFIX}server {self.node_number} {1 if start_as_primary else 0}"
+            f"sudo /tmp/{PREFIX}server {self.node_number} {1 if start_as_primary else 0}"
         )
         await self.proc.stdout.readuntil(MAGIC["MAGIC_SERVER_START"])
         logging.info(
@@ -42,12 +42,13 @@ class Server:
         logging.info(f"Server {self.node_number} becomes primary")
 
     async def get_device_digest(self):
-        proc = await self.conn.run(f"sha256sum {fake_device}")
+        proc = await self.conn.run(f"sudo head -c {512 * 1024 * 1024}  {fake_device} | sha256sum")
         return proc.stdout
 
     async def close(self):
-        await self.conn.run(f"pkill -x {PREFIX}server")
-        await self.conn.run(f"mv {fake_device} {fake_device}.bk")
+        await self.conn.run(f"sudo pkill -x {PREFIX}server")
+        await self.conn.run("sudo dd if=/dev/zero of=/dev/sdc1 bs=1G count=1")
+        # await self.conn.run(f"mv {fake_device} {fake_device}.bk")
         return self.conn.close()
 
     async def lan_down(self, link_name: str):
@@ -65,6 +66,6 @@ class Server:
 
     async def commit_suicide(self):
         assert self.proc is not None
-        self.proc.terminate()
+        await self.conn.run(f"sudo pkill -x {PREFIX}server")
         logging.info(f"Server {self.node_number} commits suicide")
         self.proc = None

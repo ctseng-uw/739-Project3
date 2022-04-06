@@ -32,7 +32,7 @@ int io_init() {
     assert(0);
   }
 #else
-  client = std::make_unique<BlockStoreClient>();
+  client = std::make_unique<BlockStoreClient>(0, false);
   return 0;
 #endif
 }
