@@ -18,8 +18,8 @@
 #include "HeartbeatServiceImpl.hpp"
 #include "TimeoutWatcher.cpp"
 #include "grpcpp/resource_quota.h"
-#include "magic.h"
 #include "macro.h"
+#include "magic.h"
 
 using grpc::ServerBuilder;
 
@@ -33,7 +33,6 @@ int main(int argc, char **argv) {
   }
 
   int my_node_number = atoi(argv[1]);
-  // TODO: ugly
   auto i_am_primary = std::make_shared<bool>(atoi(argv[2]));
 
   auto watcher = std::make_shared<TimeoutWatcher>();
@@ -65,17 +64,17 @@ int main(int argc, char **argv) {
   auto server = builder.BuildAndStart();
 
   if (*i_am_primary)
-    puts("Start as PRIMARY");
+    std::cout << "Start as PRIMARY" << std::endl;
   else
-    puts("Start as BACKUP");
+    std::cout << "Start as BACKUP" << std::endl;
   while (true) {
     if (*i_am_primary) {
       heartbeat_client->BlockUntilBecomeBackup();  // Keep sending heartbeat
-      puts("Exit BlockUntilBecomeBackup. Turned to BACKUP");
+      std::cout << "Exit BlockUntilBecomeBackup. Turned to BACKUP" << std::endl;
     } else {
       watcher->BlockUntilHeartbeatTimeout();
-      puts("Exit BlockUntilHeartbeatTimeout.");
-      puts("BACKUP to PRIMARY");
+      std::cout << "Exit BlockUntilHeartbeatTimeout." << std::endl;
+      std::cout << "BACKUP to PRIMARY" << std::endl;
       *i_am_primary = true;
       std::cout << MAGIC_BECOMES_PRIMARY << std::endl;
     }

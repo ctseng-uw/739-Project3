@@ -8,9 +8,9 @@ from asyncssh.process import ProcessError
 
 
 async def test_write_to_backup(
-    servers_external: List[Server],
+    servers: List[Server],
     clients: List[Client],
-    setup_two_servers_external: None,
+    setup_two_servers: None,
 ):
     client = clients[0]
     await client.write(0, 8192, "write_to_node0")
@@ -24,12 +24,12 @@ async def test_write_to_backup(
 
 
 async def test_primary_network_down(
-    servers_external: List[Server],
+    servers: List[Server],
     clients: List[Client],
     link_name: str,
-    setup_two_servers_external: None,
+    setup_two_servers: None,
 ):
-    [node0, node1] = servers_external
+    [node0, node1] = servers
     client = clients[0]
     await client.write(0, 8192, "write_to_node0")
     await node0.lan_down(link_name)

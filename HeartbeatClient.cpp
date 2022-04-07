@@ -2,6 +2,7 @@
 #include <grpcpp/support/status_code_enum.h>
 
 #include <exception>
+#include <iomanip>
 #include <queue>
 #include <thread>
 
@@ -49,7 +50,7 @@ class HeartbeatClient {
 
   // Return value: 0=OK 1=other_side_is_primary 2=timeout
   int RepliWrite(int64_t addr, const std::string& data) {
-    puts("Call Write");
+    std::cout << "Call Write" << std::endl;
 
     hadev::Request request;
     grpc::ClientContext context;
@@ -88,10 +89,11 @@ class HeartbeatClient {
         std::lock_guard<std::mutex> lg(mutex);
         log.pop();
       } else if (rc == 1) {
-        puts("Both side have logs and think thry're primary!");
+        std::cout << "Both side have logs and think thry're primary!"
+                  << std::endl;
         assert(false);
       } else if (rc == 2) {
-        puts("Remote dead while recovering");
+        std::cout << "Remote dead while recovering" << std::endl;
         break;
       }
     }
@@ -113,17 +115,17 @@ class HeartbeatClient {
   // Return: True==Write success (to remote or log).
   //         False==Remote is primary. Did not write.
   bool Write(int64_t addr, const std::string& data) {
-    puts("PRIMARY calls Write. Write to backup or log?");
+    std::cout << "PRIMARY calls Write. Write to backup or log?" << std::endl;
     int rc = 99999;  // 0=OK 1=other_side_is_primary 2=timeout
     if (is_backup_alive.load()) {
-      puts("Write to backup");
+      std::cout << "Write to backup" << std::endl;
       rc = RepliWrite(addr, data);
     }
 
     if (rc == 0) {
-      puts("Successfully wrote to backup");
+      std::cout << "Successfully wrote to backup" << std::endl;
     } else if (rc == 1) {
-      puts("Failed to write backup");
+      std::cout << "Failed to write backup" << std::endl;
       return false;
     } else if (rc >= 2) {
       std::cout << "Status code=" << rc << ". Write to log\n";
@@ -131,7 +133,7 @@ class HeartbeatClient {
         std::lock_guard<std::mutex> lock(mutex);
         log.push({seq.fetch_add(1), addr, data});
         if (is_backup_alive.load() == true) {
-          puts("Backup dead (write)");
+          std::cout << "Backup dead (write)" << std::endl;
         }
         is_backup_alive.store(0);
       }
@@ -142,34 +144,37 @@ class HeartbeatClient {
   void BlockUntilBecomeBackup() {
     using namespace std::chrono_literals;
     int i = 0;  // just to see if server is running...
-    puts("BlockUntilBecomeBackup");
+    std::cout << "BlockUntilBecomeBackup" << std::endl;
     while (true) {
       if (*i_am_primary == false) {
         return;
       }
       int remote_status = BeatHeart();
-      printf("%4d Call BeatHeart\n", i++);
+      std::cout << std::setfill('0') << std::setw(4) << i++ << " Call BeatHeart"
+                << std::endl;
       if (remote_status >= 0) {
         if (is_backup_alive.load() == false) {
-          puts("Remote alive (heartbeat).");
+          std::cout << "Remote alive (heartbeat)." << std::endl;
           int recovery_cnt = RunRecovery();
           if (is_backup_alive.load() == true && remote_status == 1 &&
               recovery_cnt == 0) {
-            puts("Remote think it is Primary and I had no log");
-            puts("PRIMARY to BACKUP");
+            std::cout << "Remote think it is Primary and I had no log"
+                      << std::endl;
+            std::cout << "PRIMARY to BACKUP" << std::endl;
             *i_am_primary = false;
             return;
           }
         } else {  // is_backup_alive.load() == true
           if (remote_status == 1) {
-            puts("Remote think it is Primary and I had no log");
-            puts("PRIMARY to BACKUP");
+            std::cout << "Remote think it is Primary and I had no log"
+                      << std::endl;
+            std::cout << "PRIMARY to BACKUP" << std::endl;
             *i_am_primary = false;
           }
         }
       } else {
         if (is_backup_alive.load() == true) {
-          puts("Remote dead (heartbeat)");
+          std::cout << "Remote dead (heartbeat)" << std::endl;
           is_backup_alive.store(0);
         }
       }

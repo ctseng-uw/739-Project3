@@ -25,7 +25,7 @@ class SingleBlockStoreServiceImpl final : public hadev::BlockStore::Service {
   Status Write(ServerContext *context, const hadev::WriteRequest *req,
                hadev::WriteReply *reply) {
     assert(req->data().length() == BLOCK_SIZE);
-    puts("Rcv client write request");
+    std::cout << "Rcv client write request" << std::endl;
     {
       std::lock_guard<std::mutex> lg(mutex);
       CHK(lseek(fd, req->addr(), SEEK_SET));
@@ -38,7 +38,7 @@ class SingleBlockStoreServiceImpl final : public hadev::BlockStore::Service {
 
   Status Read(ServerContext *context, const hadev::ReadRequest *req,
               hadev::ReadReply *reply) {
-    puts("Rcv client read request");
+    std::cout << "Rcv client read request" << std::endl;
     lseek(fd, req->addr(), SEEK_SET);
     char buf[BLOCK_SIZE];
     read(fd, buf, BLOCK_SIZE);

@@ -1,7 +1,8 @@
 import os
 
-PORT = 23576
-PREFIX = "sven_"
+PORT = 50051
+PREFIX = ""
+fake_device = f"/dev/sdc1"
 
 
 def pad_to_4096(data: str):

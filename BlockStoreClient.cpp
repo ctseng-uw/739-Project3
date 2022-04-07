@@ -46,7 +46,7 @@ class BlockStoreClient {
       if (!status.ok() ||
           reply.ret() == 1) {  // ret() == 1 means server is backup
         if (!designated_server) {
-          puts("ChangeServer in Write");
+          std::cout << "ChangeServer in Write" << std::endl;
           ChangeServer();
           continue;
         }
@@ -69,7 +69,7 @@ class BlockStoreClient {
       if (!status.ok() ||
           reply.ret() == 1) {  // ret() == 1 means server is backup
         if (!designated_server) {
-          // puts("ChangeServer in Read");
+          // std::cout << "ChangeServer in Read" << std::endl;
           ChangeServer();
           continue;
         }

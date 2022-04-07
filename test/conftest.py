@@ -2,14 +2,14 @@ import pytest
 import asyncssh
 import asyncio
 import logging
+import subprocess
 from typing import List
 from .client import Client
 from .server import Server
-from .utils import PREFIX
+from .utils import PREFIX, fake_device
 import os
 
-server_addrs = ["node0", "node1"]
-server_external_addrs = [
+server_addrs = [
     "node0.hadev3.advosuwmadison-pg0.wisc.cloudlab.us",
     "node1.hadev3.advosuwmadison-pg0.wisc.cloudlab.us",
 ]
@@ -20,42 +20,30 @@ client_addrs = [
 linkname = "enp6s0f0"
 
 test_dir = os.path.dirname(os.path.realpath(__file__))
+build_dir = os.path.join(test_dir, "..", "build")
 
 
 @pytest.fixture(scope="session", autouse=True)
 async def compile():
     asyncssh.set_log_level(100)
 
-    async def run_in_build(cmd):
-        proc = await asyncio.create_subprocess_shell(
-            cmd,
-            cwd=os.path.join(test_dir, "..", "build"),
-            stdout=asyncio.subprocess.PIPE,
-        )
-        await proc.communicate()
-        assert proc.returncode == 0
+    def run_in_build(cmd):
+        subprocess.run(cmd, cwd=build_dir, check=True, shell=True)
 
-    await run_in_build("cmake ..")
-    await run_in_build("make -j")
-    await asyncio.create_subprocess_shell(f"sudo ip-tables -F")
+    run_in_build("cmake ..")
+    run_in_build("make -j")
     promises = []
     for s in server_addrs:
         promises.append(
-            run_in_build(
-                f"scp -o 'StrictHostKeyChecking=no' server {s}:/tmp/{PREFIX}server"
-            )
+            asyncssh.scp(os.path.join(build_dir, "server"), f"{s}:/tmp/{PREFIX}server")
         )
     for c in client_addrs:
-        promises.append(
-            run_in_build(
-                f"scp -o 'StrictHostKeyChecking=no' client {c}:/tmp/{PREFIX}client"
-            )
-        )
-        promises.append(
-            run_in_build(
-                f"scp -o 'StrictHostKeyChecking=no' mfsfuse {c}:/tmp/{PREFIX}mfsfuse"
-            )
-        )
+        promises += [
+            asyncssh.scp(os.path.join(build_dir, "client"), f"{c}:/tmp/{PREFIX}client"),
+            asyncssh.scp(
+                os.path.join(build_dir, "mfsfuse"), f"{c}:/tmp/{PREFIX}mfsfuse"
+            ),
+        ]
     await asyncio.wait(promises)
     logging.info("Compile Done")
 
@@ -82,20 +70,8 @@ async def servers():
     for idx, node in enumerate(server_addrs):
         conn = await asyncssh.connect(node)
         await conn.run(f"sudo pkill -x {PREFIX}server")
-        await conn.run("sudo dd if=/dev/zero of=/dev/sdc1 bs=1G count=1")
-        ret.append(Server(conn, idx))
-    yield ret
-    for s in ret:
-        await s.close()
-
-
-@pytest.fixture
-async def servers_external():
-    ret = []
-    for idx, node in enumerate(server_external_addrs):
-        conn = await asyncssh.connect(node)
-        await conn.run(f"sudo pkill -x {PREFIX}server")
-        await conn.run("sudo dd if=/dev/zero of=/dev/sdc1 bs=1G count=1")
+        await conn.run(f"sudo dd if=/dev/zero of={fake_device} bs=1G count=1")
+        await conn.run(f"sudo iptables -F")
         ret.append(Server(conn, idx))
     yield ret
     for s in ret:
