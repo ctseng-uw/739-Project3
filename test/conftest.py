@@ -22,6 +22,8 @@ linkname = "enp6s0f0"
 test_dir = os.path.dirname(os.path.realpath(__file__))
 build_dir = os.path.join(test_dir, "..", "build")
 
+asyncssh.set_log_level(100)
+
 
 @pytest.fixture(scope="session", autouse=True)
 async def compile():
@@ -65,11 +67,16 @@ async def clients():
 
 
 @pytest.fixture
+async def client(clients):
+    yield clients[0]
+
+
+@pytest.fixture
 async def servers():
     ret = []
     for idx, node in enumerate(server_addrs):
         conn = await asyncssh.connect(node)
-        await conn.run(f"sudo pkill -x {PREFIX}server")
+        await conn.run(f"sudo pkill -f {PREFIX}server")
         await conn.run(f"sudo dd if=/dev/zero of={fake_device} bs=1G count=1")
         await conn.run(f"sudo iptables -F")
         ret.append(Server(conn, idx))
@@ -93,8 +100,8 @@ async def setup_two_servers(servers: List[Server]):
 
 
 @pytest.fixture
-async def setup_two_servers_external(servers_external: List[Server]):
-    [primary, backup] = servers_external
+async def setup_two_servers_1_as_primary(servers: List[Server]):
+    [backup, primary] = servers
     logging.info(f"primary={primary.conn._host}, backup={backup.conn._host}")
     await primary.start_as_primary()
     await backup.start_as_backup()

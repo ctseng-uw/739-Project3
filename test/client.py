@@ -43,3 +43,10 @@ class Client:
         await self.conn.run(f"pkill {PREFIX}mfsfuse")
         await self.conn.run(f"sudo umount /tmp/{PREFIX}go")
         return self.conn.close()
+
+    async def setup_fuse(self):
+        await self.conn.run(f"mkdir -p /tmp/{PREFIX}go")
+        await self.conn.run(f"/tmp/{PREFIX}mfsfuse -s /tmp/{PREFIX}go")
+
+    async def run_sql(self, sqlcmd: str):
+        return await self.conn.run(f"sqlite /tmp/{PREFIX}go/test.sql", input=sqlcmd)

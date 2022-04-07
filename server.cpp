@@ -23,8 +23,6 @@
 
 using grpc::ServerBuilder;
 
-const std::array<std::string, 2> LAN_ADDR{"node0", "node1"};
-
 int main(int argc, char **argv) {
   if (argc != 3) {
     std::cerr << "usage: " << argv[0]
@@ -37,15 +35,8 @@ int main(int argc, char **argv) {
 
   auto watcher = std::make_shared<TimeoutWatcher>();
 
-  grpc::ChannelArguments ch_args;
-  ch_args.SetMaxReceiveMessageSize(INT_MAX);
-  ch_args.SetMaxSendMessageSize(INT_MAX);
-  ch_args.SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, 100);
-
-  auto heartbeat_client = std::make_shared<HeartbeatClient>(
-      grpc::CreateCustomChannel(LAN_ADDR[1 - my_node_number] + ":" + PORT,
-                                grpc::InsecureChannelCredentials(), ch_args),
-      i_am_primary);
+    auto heartbeat_client =
+      std::make_shared<HeartbeatClient>(my_node_number, i_am_primary);
 
   BlockStoreServiceImpl blockstore_service(i_am_primary, heartbeat_client);
   HeartbeatServiceImpl heartbeat_service(i_am_primary, watcher, my_node_number,

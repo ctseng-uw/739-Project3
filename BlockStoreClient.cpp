@@ -16,21 +16,27 @@
 #include "macro.h"
 
 using grpc::ClientContext;
+using namespace std::chrono_literals;
 
 class BlockStoreClient {
  public:
   BlockStoreClient(int current_server = 0, bool designated_server = false)
       : current_server(current_server), designated_server(designated_server) {
-    server_ip = std::vector<std::string>({"node0:" + PORT, "node1:" + PORT});
+    server_ip = {
+        {{{"node0:" + PORT,
+           "node0.hadev3.advosuwmadison-pg0.wisc.cloudlab.us:" + PORT}},
+         {{"node1:" + PORT,
+           "node1.hadev3.advosuwmadison-pg0.wisc.cloudlab.us:" + PORT}}}};
 
+    current_iface = 0;
     grpc::ChannelArguments ch_args;
 
     ch_args.SetMaxReceiveMessageSize(INT_MAX);
     ch_args.SetMaxSendMessageSize(INT_MAX);
 
     stub_ = hadev::BlockStore::NewStub((grpc::CreateCustomChannel(
-        server_ip[current_server], grpc::InsecureChannelCredentials(),
-        ch_args)));
+        server_ip[current_server][current_iface],
+        grpc::InsecureChannelCredentials(), ch_args)));
   }
 
   int Write(const int64_t addr, const std::string &data) {
@@ -42,7 +48,17 @@ class BlockStoreClient {
       request.set_data(copy);
       ClientContext context;
       hadev::WriteReply reply;
+      context.set_wait_for_ready(true);
+      context.set_deadline(std::chrono::system_clock::now() + 4s);
       auto status = stub_->Write(&context, request, &reply);
+      if (!status.ok()) {
+        puts("failed once");
+        ChangeIface();
+        ClientContext context;
+        context.set_wait_for_ready(true);
+        context.set_deadline(std::chrono::system_clock::now() + 4s);
+        status = stub_->Write(&context, request, &reply);
+      }
       if (!status.ok() ||
           reply.ret() == 1) {  // ret() == 1 means server is backup
         if (!designated_server) {
@@ -64,8 +80,17 @@ class BlockStoreClient {
       hadev::ReadRequest request;
       request.set_addr(addr);
       ClientContext context;
+      context.set_wait_for_ready(true);
+      context.set_deadline(std::chrono::system_clock::now() + 4s);
       hadev::ReadReply reply;
       auto status = stub_->Read(&context, request, &reply);
+      if (!status.ok()) {
+        ChangeIface();
+        ClientContext context;
+        context.set_wait_for_ready(true);
+        context.set_deadline(std::chrono::system_clock::now() + 4s);
+        status = stub_->Read(&context, request, &reply);
+      }
       if (!status.ok() ||
           reply.ret() == 1) {  // ret() == 1 means server is backup
         if (!designated_server) {
@@ -86,8 +111,8 @@ class BlockStoreClient {
 
  private:
   std::unique_ptr<hadev::BlockStore::Stub> stub_;
-  std::vector<std::string> server_ip;
-  int current_server;
+  std::array<std::array<std::string, 2>, 2> server_ip;
+  int current_server, current_iface;
   bool designated_server;
 
   void ChangeServer() {
@@ -101,7 +126,22 @@ class BlockStoreClient {
     ch_args.SetMaxSendMessageSize(INT_MAX);
 
     stub_ = hadev::BlockStore::NewStub((grpc::CreateCustomChannel(
-        server_ip[current_server], grpc::InsecureChannelCredentials(),
-        ch_args)));
+        server_ip[current_server][current_iface],
+        grpc::InsecureChannelCredentials(), ch_args)));
+  }
+
+  void ChangeIface() {
+    current_iface = 1 - current_iface;
+
+    stub_.release();
+
+    grpc::ChannelArguments ch_args;
+
+    ch_args.SetMaxReceiveMessageSize(INT_MAX);
+    ch_args.SetMaxSendMessageSize(INT_MAX);
+
+    stub_ = hadev::BlockStore::NewStub((grpc::CreateCustomChannel(
+        server_ip[current_server][current_iface],
+        grpc::InsecureChannelCredentials(), ch_args)));
   }
 };

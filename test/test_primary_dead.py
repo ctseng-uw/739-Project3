@@ -64,4 +64,3 @@ async def test_die_mid_sqlite(
     await servers[0].start_as_backup()
     await servers[1].recovery_complete()
     assert await servers[0].get_device_digest() == await servers[1].get_device_digest()
-

@@ -17,7 +17,6 @@ class TimeoutWatcher {
       std::unique_lock<std::mutex> lk(cv_m);
       auto ret = cv.wait_for(lk, timeout,
                              [this] { return heartbeat_received == true; });
-      timeout = 1s;  // Reduce subsequent timeout
       if (ret == true) {
         heartbeat_received = false;
       } else {

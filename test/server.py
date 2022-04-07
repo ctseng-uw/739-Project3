@@ -14,7 +14,7 @@ class Server:
     async def __start_server(self, start_as_primary):
         assert self.proc is None
         self.proc = await self.conn.create_process(
-            f"sudo /tmp/{PREFIX}server {self.node_number} {1 if start_as_primary else 0}"
+            f"sudo /tmp/{PREFIX}server {self.node_number} {1 if start_as_primary else 0} | /usr/bin/tee /tmp/fifo"
         )
         await self.proc.stdout.readuntil(MAGIC["MAGIC_SERVER_START"])
         logging.info(
@@ -46,7 +46,7 @@ class Server:
         return proc.stdout
 
     async def close(self):
-        await self.conn.run(f"sudo pkill -x {PREFIX}server")
+        await self.conn.run(f"sudo pkill -f {PREFIX}server")
         return self.conn.close()
 
     async def lan_down(self, link_name: str):
@@ -64,7 +64,7 @@ class Server:
 
     async def commit_suicide(self):
         assert self.proc is not None
-        await self.conn.run(f"sudo pkill -x {PREFIX}server")
+        await self.conn.run(f"sudo pkill -9 -f {PREFIX}server")
         logging.info(f"Server {self.node_number} commits suicide")
         self.proc = None
 
