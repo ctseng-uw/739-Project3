@@ -26,7 +26,7 @@ async def test_write_to_backup(
 async def test_network_down(
     servers: List[Server],
     client: Client,
-    setup_two_servers_1_as_primary: None,
+    setup_two_servers: None,
     link_name,
 ):
     await client.setup_fuse()
@@ -44,7 +44,7 @@ async def test_network_down(
         INSERT INTO coffees VALUES (null, 'French_Roast_Decaf', 9.99);
     """
     coroutine = client.run_sql(sql_create_insert)
-    await servers[1].lan_down(link_name)
+    await servers[0].lan_down(link_name)
     sql_select = """
     select * from coffees;
     """

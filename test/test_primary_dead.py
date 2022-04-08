@@ -11,7 +11,7 @@ async def test_primary_dead_simple(
     client = clients[0]
     await client.write(0, 0, "123456")
     assert (await client.read(0, 0)).stdout == pad_to_4096("123456")
-    await primary.commit_suicide()
+    await primary.terminate()
     await backup.become_primary()
     await client.write(1, 6, "789")
     assert (await client.read(1, 0)).stdout == pad_to_4096("123456789")
@@ -24,7 +24,7 @@ async def test_primary_dead_up_again(
     client = clients[0]
     await client.write(0, 0, "123456")
     assert (await client.read(0, 0)).stdout == pad_to_4096("123456")
-    await primary.commit_suicide()
+    await primary.terminate()
     await backup.become_primary()
     await client.write(1, 6, "789")
     assert (await client.read(1, 0)).stdout == pad_to_4096("123456789")
@@ -54,7 +54,7 @@ async def test_die_mid_sqlite(
     await clients[0].run(f"mkdir -p /tmp/{PREFIX}go")
     await clients[0].run(f"/tmp/{PREFIX}mfsfuse -s /tmp/{PREFIX}go")
     sqlrun = clients[0].run(f"sqlite /tmp/{PREFIX}go/test.sql", sqlcmd)
-    await servers[0].commit_suicide()
+    await servers[0].terminate()
     await sqlrun
     sqlcmd = """
     select * from coffees;

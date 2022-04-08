@@ -14,7 +14,7 @@ async def test_backup_dead_simple(
     primary = servers[0]
     await clients[0].write(0, 0, "apple")
     assert await backup.get_device_digest() == await primary.get_device_digest()
-    await backup.commit_suicide()
+    await backup.terminate()
     ret = await clients[0].write(0, 0, "banana")
     await clients[0].write(0, 6, "guava")
     assert (await clients[0].read(0, 0)).stdout == pad_to_4096("bananaguava")
@@ -31,7 +31,7 @@ async def test_backup_die_again_during_recovery(
     primary = servers[0]
     await clients[0].write(0, 0, "helloworld!")
     assert await backup.get_device_digest() == await primary.get_device_digest()
-    await backup.commit_suicide()
+    await backup.terminate()
     for addr in range(500):
         await clients[0].write(
             0,
@@ -47,7 +47,7 @@ async def test_backup_die_again_during_recovery(
     prev_digest = await backup.get_device_digest()
     await backup.start_as_backup()
     await primary.starting_recovery()
-    await backup.commit_suicide()
+    await backup.terminate()
     await primary.recovery_complete()
     assert (
         await primary.get_device_digest() != await backup.get_device_digest()

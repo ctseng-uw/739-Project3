@@ -29,15 +29,15 @@ class Server:
 
     async def starting_recovery(self):
         await self.proc.stdout.readuntil(MAGIC["MAGIC_STARTING_RECOVERY"])
-        logging.info(f"Server {self.node_number} starting recovery")
+        logging.debug(f"Server {self.node_number} starting recovery")
 
     async def recovery_complete(self):
         await self.proc.stdout.readuntil(MAGIC["MAGIC_RECOVERY_COMPLETE"])
-        logging.info(f"Server {self.node_number} recovery complete")
+        logging.debug(f"Server {self.node_number} recovery complete")
 
     async def become_primary(self):
         await self.proc.stdout.readuntil(MAGIC["MAGIC_BECOMES_PRIMARY"])
-        logging.info(f"Server {self.node_number} becomes primary")
+        logging.debug(f"Server {self.node_number} becomes primary")
 
     async def get_device_digest(self):
         proc = await self.conn.run(
@@ -56,17 +56,22 @@ class Server:
         await self.conn.run(
             f"sudo iptables -A INPUT -i {link_name} -p tcp --destination-port {PORT} -j DROP"
         )
-        logging.info(f"Server {self.node_number} LAN down")
+        logging.debug(f"Server {self.node_number} LAN down")
 
     async def lan_up(self, link_name: str):
         await self.conn.run(f"sudo iptables -F")
-        logging.info(f"Server {self.node_number} LAN up")
+        logging.debug(f"Server {self.node_number} LAN up")
 
-    async def commit_suicide(self):
+    async def terminate(self):
         assert self.proc is not None
         await self.conn.run(f"sudo pkill -9 -f {PREFIX}server")
-        logging.info(f"Server {self.node_number} commits suicide")
+        logging.debug(f"Server {self.node_number} commits suicide")
         self.proc = None
+
+    async def wait_for_some_write(self):
+        await self.proc.stdout.readuntil("Write to backup")
+        await self.proc.stdout.readuntil("Write to backup")
+        await self.proc.stdout.readuntil("Write to backup")
 
     def collect_output(self):
         out, _ = self.proc.collect_output()
