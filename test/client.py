@@ -40,7 +40,7 @@ class Client:
         return self.conn.run(cmd, check=True, input=input)
 
     async def close(self):
-        await self.conn.run(f"pkill {PREFIX}mfsfuse")
+        await self.conn.run(f"pkill -x {PREFIX}mfsfuse")
         await self.conn.run(f"sudo umount /tmp/{PREFIX}go")
         return self.conn.close()
 

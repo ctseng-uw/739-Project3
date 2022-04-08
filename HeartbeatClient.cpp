@@ -64,7 +64,7 @@ class HeartbeatClient {
     return reply.i_am_primary();
   }
 
-  // Return value: 0=OK 1=other_side_is_primary 2=timeout
+  // Return value: 0=OK 1=other_side_is_primary >=2=timeout
   int RepliWrite(int64_t addr, const std::string& data) {
     std::cout << "Call Write" << std::endl;
 

@@ -51,9 +51,6 @@ target_link_libraries(hadev grpc++)
 add_executable(client client.cpp)
 target_link_libraries(client hadev grpc++)
 
-add_executable(SessionClient SessionClient.cpp)
-target_link_libraries(SessionClient hadev grpc++)
-
 find_package(FUSE REQUIRED)
 include_directories(${FUSE_INCLUDE_DIR})
 add_definitions("-D_FILE_OFFSET_BITS=64")
@@ -63,5 +60,5 @@ target_link_libraries(mfsfuse hadev grpc++ ${FUSE_LIBRARIES})
 add_executable(ReadWrite measurement/ReadWrite.cpp)
 target_link_libraries(ReadWrite hadev grpc++)
 
-add_executable(SingleServer SingleServer.cpp SingleBlockStoreServiceImpl.cpp ${PROTOBUF_DST})
+add_executable(SingleServer measurement/SingleServer.cpp measurement/SingleBlockStoreServiceImpl.cpp ${PROTOBUF_DST})
 target_link_libraries(SingleServer grpc++)

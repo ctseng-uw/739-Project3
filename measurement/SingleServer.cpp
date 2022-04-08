@@ -13,13 +13,12 @@
 #include <mutex>
 #include <thread>
 
+#include "../macro.h"
+#include "../magic.h"
 #include "SingleBlockStoreServiceImpl.cpp"
 #include "grpcpp/resource_quota.h"
-#include "magic.h"
-#include "macro.h"
 
 using grpc::ServerBuilder;
-
 
 int main(int argc, char **argv) {
   SingleBlockStoreServiceImpl blockstore_service;
@@ -35,7 +34,9 @@ int main(int argc, char **argv) {
   std::cout << MAGIC_SERVER_START << std::endl;
   auto server = builder.BuildAndStart();
 
-  while (true) {;}
+  while (true) {
+    ;
+  }
 
   return 0;
 }

@@ -3,10 +3,10 @@
 
 #include <mutex>
 
-#include "HeartbeatClient.cpp"
-#include "includes/blockstore.grpc.pb.h"
-#include "includes/blockstore.pb.h"
-#include "macro.h"
+#include "../HeartbeatClient.cpp"
+#include "../includes/blockstore.grpc.pb.h"
+#include "../includes/blockstore.pb.h"
+#include "../macro.h"
 
 using grpc::ServerContext;
 using grpc::Status;

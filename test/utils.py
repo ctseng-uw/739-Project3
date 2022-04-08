@@ -1,6 +1,6 @@
 import os
 
-PORT = 50051
+PORT = 50052
 PREFIX = ""
 fake_device = f"/dev/sdc1"
 

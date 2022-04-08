@@ -1,0 +1,54 @@
+In general BlockStoreClient.cpp implements client library, client.cpp uses that library.
+BlockStoreServiceImpl.cpp handles server side logic during client-server communication.
+HeartBeatClient.cpp and HeartbeatServiceImpl.cpp implements all server-to-server communication logic.
+
+1.1 Replication Strategy
+* Replication Strategy = P/B (Whole code base)
+* Which server can client access
+    * The primary server
+    * Client lib will retry another server if the current one is down or is a backup server (ChangeServer() in BlockStoreClient.cpp)
+* When to reply
+    * Server response after write to log or backup (Write() in BlockStoreServiceImpl.cpp)
+* Hide server failure (see correctness section)
+
+1.2 Durability
+* How to ensure durability
+    * write to raw partition (no file system)
+    * fsync before return (Write() in BlockStoreServiceImpl.cpp / RepliWrite() in HeartbeatServiceImpl.cpp)
+
+1.3 Crash Recovery Protocol
+* Client traffic & strong consistency:  (Write() in BlockStoreServiceImpl.cpp)
+    * Normal case: Return after write/fsync at backup and write/fsync at primary.
+    * Backup failed: Return after write/fsync at priamry and write to log.
+* Handle transtion: 
+    * Primary fail: (while loop in server.cpp)
+        * Backup's `watcher->BlockUntilHeartbeatTimeout()` will return and it will takeover and become primary 
+    * Backup fail: (BlockUntilBecomeBackup() in HearbeatClient.cpp)
+        * If the heartbeat timed out, the primary will set is_backup_alive to false. Subsequent write will be written to log
+    * Any server restart: (BlockUntilBecomeBackup() in HearbeatClient.cpp)
+        * If a heartbeat request get a response from previously dead remote, the primary will set is_backup_alive to true
+        * If remote also claim to be primary, initiate conflict resolve protocol and the one with write log will become primary
+
+2.1 Correctness
+All tests are in the `test` folder (filename begins with test_)
+* Availability
+    * test_backup_dead.py test_primary_dead.py test that operations can be continued even if a server is down
+    * test_primary_network_failure tests that the program operate normally if one of the two networks is blocked
+* Strong Consistency
+    * `test_override.py` test that client can read latest value after crashes
+* Testing Strategy (All files in the `test` folder)
+    * We wrote Python code to test our implmentation
+    * When server reach critical points, it will emit "magic" strings, by capturing those string, the Python test code can know the server's state and act/terminate it accordingly
+    * demo video: https://uwprod-my.sharepoint.com/:v:/g/personal/ctseng27_wisc_edu/Edi-txXnkrZNiMmVpoUjt_cBvNxzfT1IA7bwtgavU7rkkQ
+
+2.2 Performance
+* Latency
+    * For SQLite workload, the filesystem implmentation is in fs/mfs.cpp & fs/mfsfuse.cpp, we measure the time using `time`
+    * For single block workload, see measurement/ReadWrite.cpp
+    * The implmentation of a single server (no backup) is in measurement/SingleServer.cpp &  measurement/SingleBlockStoreServiceImpl.cpp
+* Recovery time
+    * Measured by placing timer in `RunRecovery()` in HeartBeeatClient.cpp
+* Aligned / Unaligned
+    * Also measured using measurement/ReadWrite.cpp (with different addr)
+
+How to handle the whole transition from N nodes to N-1 nodes, and back to N nodes again? If you chose an asymmetric replication scheme (i.e. Primary/Backup), any difference if the crashed one is the primary or the backup?

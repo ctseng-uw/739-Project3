@@ -76,7 +76,7 @@ async def servers():
     ret = []
     for idx, node in enumerate(server_addrs):
         conn = await asyncssh.connect(node)
-        await conn.run(f"sudo pkill -f {PREFIX}server")
+        await conn.run(f"sudo pkill -x {PREFIX}server")
         await conn.run(f"sudo dd if=/dev/zero of={fake_device} bs=1G count=1")
         await conn.run(f"sudo iptables -F")
         ret.append(Server(conn, idx))
