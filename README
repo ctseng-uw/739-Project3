@@ -35,7 +35,7 @@ All tests are in the `test` folder (filename begins with test_)
     * test_backup_dead.py test_primary_dead.py test that operations can be continued even if a server is down
     * test_primary_network_failure tests that the program operate normally if one of the two networks is blocked
 * Strong Consistency
-    * `test_override.py` test that client can read latest value after crashes
+    * `test_overwrite.py` test that client can read latest value after crashes
 * Testing Strategy (All files in the `test` folder)
     * We wrote Python code to test our implmentation
     * When server reach critical points, it will emit "magic" strings, by capturing those string, the Python test code can know the server's state and act/terminate it accordingly
